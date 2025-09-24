@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Zootropo Interactivo</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/gif.js@0.2.0/dist/gif.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
         body {
@@ -19,22 +20,9 @@
             align-items: center;
             padding: 1rem;
         }
-        #zootrope-image {
+        canvas {
             max-width: 90vw;
             max-height: 70vh;
-            /* Se ha eliminado la transición para evitar conflictos con la animación de giro */
-        }
-        .rotate {
-            /* La animación usa una variable CSS para la velocidad */
-            animation: spin var(--spin-speed) linear infinite;
-        }
-        @keyframes spin {
-            from {
-                transform: rotate(0deg);
-            }
-            to {
-                transform: rotate(360deg);
-            }
         }
     </style>
 </head>
@@ -47,8 +35,8 @@
                 Sube una imagen circular con tu animación y presiona "Girar" para ver la magia del zootropo.
             </p>
 
-            <!-- Contenedor para la entrada de archivo -->
-            <div class="mb-6 w-full">
+            <!-- Contenedor para la entrada de archivo y número de fotogramas -->
+            <div class="mb-6 w-full flex flex-col items-center">
                 <label class="block mb-2 text-sm font-medium text-gray-700">
                     Selecciona tu disco de zootropo:
                 </label>
@@ -58,33 +46,49 @@
                     file:text-sm file:font-semibold
                     file:bg-blue-50 file:text-blue-700
                     hover:file:bg-blue-100 cursor-pointer" />
+                
+                <label for="frame-count" class="block mt-4 text-sm font-medium text-gray-700">
+                    Número de fotogramas en el disco:
+                </label>
+                <input type="number" id="frame-count" value="12" min="1" class="mt-1 block w-24 rounded-md border-gray-300 shadow-sm text-center focus:border-blue-500 focus:ring-blue-500 sm:text-sm" />
             </div>
 
-            <!-- Contenedor de la imagen del zootropo -->
-            <div class="w-full flex justify-center items-center mb-6">
-                <!-- Se inicializa la variable CSS para la velocidad de giro -->
-                <img id="zootrope-image" src="https://placehold.co/400x400/e2e8f0/64748b?text=Subir+Imagen" alt="Disco de Zootropo" class="rounded-full shadow-md" style="--spin-speed: 1s;" />
+            <!-- Contenedor del canvas y mensaje -->
+            <div class="w-full flex flex-col justify-center items-center mb-6">
+                <canvas id="zootrope-canvas" class="rounded-full shadow-md"></canvas>
+                <p id="message" class="text-sm mt-4 text-gray-600"></p>
             </div>
 
-            <!-- Contenedor de los botones de control -->
-            <div class="flex flex-wrap justify-center space-x-2 md:space-x-4">
-                <button id="spin-btn" class="bg-blue-600 text-white font-semibold py-2 px-6 rounded-full shadow-md hover:bg-blue-700 transition duration-300 mb-2">
-                    Girar
+            <!-- Controles de dirección y animación -->
+            <div class="flex flex-wrap justify-center space-x-2 md:space-x-4 mb-4">
+                <button id="spin-clockwise" class="bg-blue-600 text-white font-semibold py-2 px-6 rounded-full shadow-md hover:bg-blue-700 transition duration-300 mb-2">
+                    Girar Horario
+                </button>
+                <button id="spin-counter-clockwise" class="bg-blue-600 text-white font-semibold py-2 px-6 rounded-full shadow-md hover:bg-blue-700 transition duration-300 mb-2">
+                    Girar Antihorario
                 </button>
                 <button id="stop-btn" class="bg-red-500 text-white font-semibold py-2 px-6 rounded-full shadow-md hover:bg-red-600 transition duration-300 mb-2">
                     Detener
                 </button>
+            </div>
+
+            <!-- Controles de velocidad y guardado -->
+            <div class="flex flex-wrap justify-center space-x-2 md:space-x-4">
                 <button id="increase-speed-btn" class="bg-green-500 text-white font-semibold py-2 px-6 rounded-full shadow-md hover:bg-green-600 transition duration-300 mb-2">
                     Aumentar Velocidad
                 </button>
                 <button id="decrease-speed-btn" class="bg-yellow-500 text-white font-semibold py-2 px-6 rounded-full shadow-md hover:bg-yellow-600 transition duration-300 mb-2">
                     Disminuir Velocidad
                 </button>
+                <button id="save-gif-btn" class="bg-purple-600 text-white font-semibold py-2 px-6 rounded-full shadow-md hover:bg-purple-700 transition duration-300 mb-2">
+                    Guardar como GIF
+                </button>
             </div>
             
             <!-- Contador de velocidad -->
             <div class="mt-4 text-center">
                 <p class="text-gray-700 font-medium">Velocidad: <span id="speed-counter" class="font-bold">1.0s</span></p>
+                <p class="text-xs text-gray-500 mt-1">(Tiempo entre fotogramas)</p>
             </div>
         </div>
     </div>
@@ -92,15 +96,43 @@
     <script>
         // Obtener referencias a los elementos del DOM
         const imageUpload = document.getElementById('image-upload');
-        const zootropeImage = document.getElementById('zootrope-image');
-        const spinBtn = document.getElementById('spin-btn');
+        const frameCountInput = document.getElementById('frame-count');
+        const zootropeCanvas = document.getElementById('zootrope-canvas');
+        const spinClockwiseBtn = document.getElementById('spin-clockwise');
+        const spinCounterClockwiseBtn = document.getElementById('spin-counter-clockwise');
         const stopBtn = document.getElementById('stop-btn');
         const increaseSpeedBtn = document.getElementById('increase-speed-btn');
         const decreaseSpeedBtn = document.getElementById('decrease-speed-btn');
-        const speedCounter = document.getElementById('speed-counter'); // Nuevo elemento del contador
+        const saveGifBtn = document.getElementById('save-gif-btn');
+        const speedCounter = document.getElementById('speed-counter');
+        const messageDisplay = document.getElementById('message');
 
-        let rotationInterval;
-        let currentSpeed = 1.0; // Velocidad inicial en segundos por giro
+        const ctx = zootropeCanvas.getContext('2d');
+        let zootropeImage = new Image();
+        let animationInterval;
+        let currentSpeed = 100; // Velocidad inicial en milisegundos
+        let currentRotation = 0; // Rotación actual en grados
+        let rotationDirection = 1; // 1 para horario, -1 para antihorario
+        let frames = parseInt(frameCountInput.value);
+        let rotationPerFrame = 360 / frames;
+
+        // Establecer el tamaño del canvas
+        const setCanvasSize = () => {
+            const size = Math.min(window.innerWidth * 0.9, window.innerHeight * 0.7, 500);
+            zootropeCanvas.width = size;
+            zootropeCanvas.height = size;
+            ctx.clearRect(0, 0, size, size);
+            ctx.fillStyle = '#e2e8f0';
+            ctx.fillRect(0, 0, size, size);
+        };
+        setCanvasSize();
+
+        // Cargar imagen de ejemplo inicial
+        const initialImage = new Image();
+        initialImage.onload = () => {
+            ctx.drawImage(initialImage, 0, 0, zootropeCanvas.width, zootropeCanvas.height);
+        };
+        initialImage.src = 'https://placehold.co/400x400/e2e8f0/64748b?text=Subir+Imagen';
 
         // Manejar el evento de cambio en la entrada de archivo
         imageUpload.addEventListener('change', (e) => {
@@ -108,53 +140,128 @@
             if (file) {
                 const reader = new FileReader();
                 reader.onload = (event) => {
+                    zootropeImage.onload = () => {
+                        // Establecer el tamaño del canvas basado en la imagen cargada
+                        zootropeCanvas.width = zootropeImage.naturalWidth;
+                        zootropeCanvas.height = zootropeImage.naturalHeight;
+                        stopAnimation();
+                        drawFrame(0);
+                    };
                     zootropeImage.src = event.target.result;
-                    // Detener cualquier animación en curso al cargar una nueva imagen
-                    stopAnimation();
                 };
                 reader.readAsDataURL(file);
             }
         });
 
+        // Manejar el cambio en el número de fotogramas
+        frameCountInput.addEventListener('change', () => {
+            const newFrames = parseInt(frameCountInput.value);
+            if (newFrames > 0) {
+                frames = newFrames;
+                rotationPerFrame = 360 / frames;
+                stopAnimation();
+                drawFrame(0);
+            }
+        });
+
+        // Función para dibujar un fotograma en el canvas
+        const drawFrame = (rotation) => {
+            ctx.save();
+            ctx.clearRect(0, 0, zootropeCanvas.width, zootropeCanvas.height);
+            ctx.translate(zootropeCanvas.width / 2, zootropeCanvas.height / 2);
+            ctx.rotate(rotation * Math.PI / 180);
+            ctx.drawImage(zootropeImage, -zootropeCanvas.width / 2, -zootropeCanvas.height / 2, zootropeCanvas.width, zootropeCanvas.height);
+            ctx.restore();
+        };
+
         // Función para iniciar la animación de giro
         const startAnimation = () => {
-            zootropeImage.classList.add('rotate');
+            stopAnimation(); // Detiene cualquier animación en curso
+            animationInterval = setInterval(() => {
+                currentRotation += rotationPerFrame * rotationDirection;
+                drawFrame(currentRotation);
+            }, currentSpeed);
         };
 
         // Función para detener la animación
         const stopAnimation = () => {
-            zootropeImage.classList.remove('rotate');
+            if (animationInterval) {
+                clearInterval(animationInterval);
+                animationInterval = null;
+            }
         };
 
-        // Función para actualizar la velocidad de la animación y el contador
+        // Función para actualizar la velocidad de la animación
         const updateSpeed = () => {
-            // Actualizar la variable CSS
-            zootropeImage.style.setProperty('--spin-speed', `${currentSpeed}s`);
-            // Actualizar el texto del contador
-            speedCounter.textContent = `${currentSpeed.toFixed(1)}s`;
+            stopAnimation();
+            startAnimation();
+            speedCounter.textContent = `${(currentSpeed / 1000).toFixed(2)}s`;
         };
 
-        // Aumentar la velocidad (disminuir el valor en segundos)
-        increaseSpeedBtn.addEventListener('click', () => {
-            // Asegurarse de que no sea demasiado rápido
-            if (currentSpeed > 0.1) {
-                currentSpeed -= 0.1;
-                updateSpeed();
-            }
+        // Manejadores de eventos de los botones
+        spinClockwiseBtn.addEventListener('click', () => {
+            rotationDirection = 1;
+            startAnimation();
         });
-
-        // Disminuir la velocidad (aumentar el valor en segundos)
-        decreaseSpeedBtn.addEventListener('click', () => {
-            // Asegurarse de que no sea demasiado lento
-            if (currentSpeed < 5) {
-                currentSpeed += 0.1;
-                updateSpeed();
-            }
+        spinCounterClockwiseBtn.addEventListener('click', () => {
+            rotationDirection = -1;
+            startAnimation();
         });
-
-        // Escuchar los clics en los botones de control
-        spinBtn.addEventListener('click', startAnimation);
         stopBtn.addEventListener('click', stopAnimation);
+        increaseSpeedBtn.addEventListener('click', () => {
+            if (currentSpeed > 20) {
+                currentSpeed -= 10;
+                updateSpeed();
+            }
+        });
+        decreaseSpeedBtn.addEventListener('click', () => {
+            if (currentSpeed < 1000) {
+                currentSpeed += 10;
+                updateSpeed();
+            }
+        });
+
+        // Guardar la animación como un GIF
+        saveGifBtn.addEventListener('click', () => {
+            if (!zootropeImage.src || zootropeImage.src.includes('placehold.co')) {
+                messageDisplay.textContent = 'Por favor, sube una imagen primero.';
+                return;
+            }
+
+            stopAnimation();
+            messageDisplay.textContent = 'Generando GIF... Por favor, espera.';
+            
+            const gif = new GIF({
+                workers: 2,
+                quality: 10,
+                width: zootropeCanvas.width,
+                height: zootropeCanvas.height,
+            });
+
+            // Captura los fotogramas
+            let currentFrameRotation = 0;
+            const delay = currentSpeed;
+            for (let i = 0; i < frames; i++) {
+                drawFrame(currentFrameRotation);
+                gif.addFrame(ctx, { delay: delay });
+                currentFrameRotation += rotationPerFrame;
+            }
+
+            // Renderiza el GIF
+            gif.on('finished', (blob) => {
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'zootropo_animado.gif';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                messageDisplay.textContent = '¡GIF guardado con éxito!';
+            });
+
+            gif.render();
+        });
 
     </script>
 </body>
