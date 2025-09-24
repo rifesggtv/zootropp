@@ -81,7 +81,7 @@
                     Disminuir Velocidad
                 </button>
                 <button id="save-gif-btn" class="bg-purple-600 text-white font-semibold py-2 px-6 rounded-full shadow-md hover:bg-purple-700 transition duration-300 mb-2">
-                    Guardar como GIF
+                    Grabar Animación
                 </button>
             </div>
             
@@ -222,47 +222,68 @@
         });
 
         // Guardar la animación como un GIF
-        saveGifBtn.addEventListener('click', () => {
+        saveGifBtn.addEventListener('click', async () => {
             if (!zootropeImage.src || zootropeImage.src.includes('placehold.co')) {
                 messageDisplay.textContent = 'Por favor, sube una imagen primero.';
                 return;
             }
-
-            stopAnimation();
-            messageDisplay.textContent = 'Generando GIF... Por favor, espera.';
             
-            const gif = new GIF({
-                workers: 2,
-                quality: 10,
-                width: zootropeCanvas.width,
-                height: zootropeCanvas.height,
-            });
+            stopAnimation();
+            messageDisplay.textContent = 'Preparando grabadora... Por favor, espera.';
 
-            // Captura los fotogramas
-            let currentFrameRotation = 0;
-            const delay = currentSpeed;
-            for (let i = 0; i < frames; i++) {
-                drawFrame(currentFrameRotation);
-                gif.addFrame(ctx, { delay: delay });
-                currentFrameRotation += rotationPerFrame;
+            try {
+                // Obtener el script del worker como un objeto Blob para evitar problemas de CORS
+                const workerUrl = 'https://cdn.jsdelivr.net/npm/gif.js@0.2.0/dist/gif.worker.js';
+                const workerResponse = await fetch(workerUrl);
+                const workerBlob = await workerResponse.blob();
+                const workerScriptUrl = URL.createObjectURL(workerBlob);
+
+                messageDisplay.textContent = 'Generando GIF... Esto puede tardar un momento.';
+
+                const gif = new GIF({
+                    workers: 2,
+                    quality: 10,
+                    workerScript: workerScriptUrl,
+                    width: zootropeCanvas.width,
+                    height: zootropeCanvas.height,
+                });
+
+                // Captura los 200 fotogramas para una animación fluida
+                const totalFramesToCapture = 200;
+                const rotationStep = 360 / totalFramesToCapture;
+
+                for (let i = 0; i < totalFramesToCapture; i++) {
+                    drawFrame(i * rotationStep);
+                    gif.addFrame(ctx, { delay: currentSpeed });
+                }
+
+                // Renderiza el GIF
+                gif.on('finished', (blob) => {
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'zootropo_animado.gif';
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                    messageDisplay.textContent = '¡GIF guardado con éxito!';
+                });
+
+                gif.on('error', (err) => {
+                    messageDisplay.textContent = `Error al generar el GIF: ${err}`;
+                    console.error('GIF.js Error:', err);
+                });
+
+                gif.render();
+
+            } catch (error) {
+                messageDisplay.textContent = `Error al cargar los recursos: ${error.message}`;
+                console.error('Fetch Error:', error);
             }
-
-            // Renderiza el GIF
-            gif.on('finished', (blob) => {
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = 'zootropo_animado.gif';
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                URL.revokeObjectURL(url);
-                messageDisplay.textContent = '¡GIF guardado con éxito!';
-            });
-
-            gif.render();
         });
 
     </script>
 </body>
 </html>
+
