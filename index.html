@@ -448,6 +448,12 @@ let proGameState = {
     challenges: null
 };
 
+// Estados para "Practica el verbo"
+let practiceTableMode = 'past'; // Opciones: 'present', 'past', 'participle', 'es', 'random'
+let practiceTableAnswers = {};
+let practiceTableResults = {};
+let practiceTableRandomMask = [];
+
 // ==========================================
 // 4. LÓGICA DE ACTUALIZACIÓN DE ESTADOS
 // ==========================================
@@ -471,6 +477,69 @@ window.updateBuilder = (key, val) => {
     builderState[key] = val; 
     renderApp(); 
 };
+
+// --- LÓGICA PARA "PRACTICA EL VERBO" ---
+
+window.initPracticeTable = () => {
+    practiceTableAnswers = {};
+    practiceTableResults = {};
+    practiceTableRandomMask = verbs.map(() => {
+        const cols = ['present', 'past', 'participle', 'es'];
+        return cols[Math.floor(Math.random() * cols.length)];
+    });
+};
+
+// Iniciar los datos de la tabla al cargar
+initPracticeTable();
+
+window.setPracticeTableMode = (mode) => {
+    practiceTableMode = mode;
+    initPracticeTable(); // Reiniciar respuestas y nueva mascara aleatoria
+    renderApp();
+};
+
+window.updatePracticeTableAnswer = (idx, val) => {
+    practiceTableAnswers[idx] = val;
+    // Quitamos el color de validación si el usuario vuelve a escribir
+    practiceTableResults[idx] = null; 
+};
+
+window.checkPracticeTableAnswer = (idx) => {
+    let expected = '';
+    let v = verbs[idx];
+    let col = practiceTableMode === 'random' ? practiceTableRandomMask[idx] : practiceTableMode;
+    
+    if (col === 'present') expected = v.base;
+    else if (col === 'past') expected = v.past;
+    else if (col === 'participle') expected = v.participle;
+    else if (col === 'es') expected = v.es;
+
+    let normInput = normalize(practiceTableAnswers[idx] || '');
+    let expectedParts = expected.split('/').map(s => normalize(s));
+    let isCorrect = false;
+
+    // Validación flexible para manejar casos como "was / were" o "shown / showed"
+    if (normInput === normalize(expected)) {
+        isCorrect = true;
+    } else if (expectedParts.includes(normInput)) {
+        isCorrect = true;
+    } else if (normInput.replace(/\s+/g, '') === normalize(expected).replace(/\s+/g, '')) {
+        isCorrect = true;
+    }
+
+    practiceTableResults[idx] = isCorrect ? 'ok' : 'bad';
+    renderApp();
+};
+
+window.checkAllPracticeTable = () => {
+    verbs.forEach((v, idx) => {
+        if (practiceTableAnswers[idx] !== undefined && practiceTableAnswers[idx].trim() !== '') {
+            checkPracticeTableAnswer(idx);
+        }
+    });
+    renderApp();
+};
+
 
 // --- LÓGICA PARA LOS 50 JUEGOS CLÁSICOS (ORIGINALES) ---
 
@@ -549,11 +618,11 @@ window.initProGames = () => {
     proGameState.challenges = [];
     const types = ['sound_match', 'odd_one_out', 'reading', 'syllable', 'listen_guess'];
     const stories = [
-        "Ayer yo {past} con mis amigos toda la tarde. Fue genial.",
-        "Ella {past} muy temprano esta mañana antes de ir a trabajar.",
-        "Nosotros no sabíamos qué hacer, así que él {past} ayudarnos un poco.",
-        "El fin de semana pasado, mi familia {past} en el parque central.",
-        "Cuando vi lo que pasó, me sorprendí y {past} inmediatamente."
+        "Yesterday I {past} with my friends all afternoon. (Ayer yo {past} con mis amigos toda la tarde.)",
+        "She {past} very early this morning before work. (Ella {past} muy temprano esta mañana antes del trabajo.)",
+        "We didn't know what to do, so he {past} to help us a bit. (No sabíamos qué hacer, así que él {past} para ayudarnos un poco.)",
+        "Last weekend, my family {past} in the central park. (El fin de semana pasado, mi familia {past} en el parque central.)",
+        "When I saw what happened, I was surprised and {past} immediately. (Cuando vi lo que pasó, me sorprendí y {past} inmediatamente.)"
     ];
 
     for(let i = 0; i < 100; i++) {
@@ -665,17 +734,23 @@ function renderTabs() {
         { id: 'sentences', label: '50+ phrases' },
         { id: 'movie', label: 'Movie mode' },
         { id: 'games', label: 'Games (50)' },
-        { id: 'pro-games', label: '100 Pro Challenges' } // NUEVA PESTAÑA
+        { id: 'pro-games', label: '100 Pro Challenges' },
+        { id: 'practice-table', label: 'Practica el verbo' } // NUEVA PESTAÑA
     ];
     
     let tabsHTML = '';
     for (let t of tabs) {
         let activeClass = activeTab === t.id ? 'tab-active' : 'tab-inactive';
-        let extraClass = t.id === 'pro-games' ? 'bg-indigo-100 text-indigo-800 font-bold' : '';
-        if(activeTab === 'pro-games' && t.id === 'pro-games') extraClass = 'bg-indigo-600 text-white shadow-sm';
+        let extraClass = '';
+        
+        if (t.id === 'pro-games') {
+            extraClass = activeTab === 'pro-games' ? 'bg-indigo-600 text-white shadow-sm' : 'bg-indigo-100 text-indigo-800 font-bold';
+        } else if (t.id === 'practice-table') {
+            extraClass = activeTab === 'practice-table' ? 'bg-emerald-600 text-white shadow-sm' : 'bg-emerald-100 text-emerald-800 font-bold';
+        }
 
         tabsHTML += `
-            <button onclick="setTab('${t.id}')" class="tab-trigger ${activeClass} ${extraClass}">
+            <button onclick="setTab('${t.id}')" class="tab-trigger ${activeClass} ${extraClass} m-0.5">
                 ${t.label}
             </button>
         `;
@@ -1260,6 +1335,111 @@ function renderProGames() {
 }
 
 // ==========================================
+// NUEVA SECCIÓN: PRACTICA EL VERBO (TABLA COMPLETA)
+// ==========================================
+
+function createPracticeInput(idx, expectedVal) {
+    let val = practiceTableAnswers[idx] || '';
+    let res = practiceTableResults[idx];
+    let borderClass = 'border-slate-300 focus:border-emerald-500 focus:ring-emerald-500';
+    let icon = '';
+    
+    if (res === 'ok') { 
+        borderClass = 'border-green-500 bg-green-50 text-green-700 font-bold'; 
+        icon = '<i data-lucide="check" class="inline w-4 h-4 text-green-600 ml-2 flex-shrink-0"></i>'; 
+    }
+    else if (res === 'bad') { 
+        borderClass = 'border-red-500 bg-red-50 text-red-700'; 
+        icon = '<i data-lucide="x" class="inline w-4 h-4 text-red-600 ml-2 flex-shrink-0"></i>'; 
+    }
+
+    return `
+        <div class="flex items-center w-full">
+            <input type="text" 
+                class="input w-full h-9 text-sm ${borderClass}" 
+                value="${val}" 
+                oninput="updatePracticeTableAnswer(${idx}, this.value)"
+                onblur="checkPracticeTableAnswer(${idx})"
+                onkeyup="if(event.key==='Enter') checkPracticeTableAnswer(${idx})"
+                placeholder="Escribe aquí..." />
+            ${icon}
+        </div>
+    `;
+}
+
+function renderPracticeTable() {
+    let rowsHTML = '';
+    
+    verbs.forEach((v, idx) => {
+        let targetCol = practiceTableMode === 'random' ? practiceTableRandomMask[idx] : practiceTableMode;
+        
+        let cellPresent = targetCol === 'present' ? createPracticeInput(idx, v.base) : `<div class="font-medium text-slate-800">${v.base}</div>`;
+        let cellPast = targetCol === 'past' ? createPracticeInput(idx, v.past) : `<div class="font-medium text-indigo-700">${v.past}</div>`;
+        let cellParticiple = targetCol === 'participle' ? createPracticeInput(idx, v.participle) : `<div class="font-medium text-emerald-700">${v.participle}</div>`;
+        let cellEs = targetCol === 'es' ? createPracticeInput(idx, v.es) : `<div class="text-slate-600 text-sm">${v.es}</div>`;
+
+        rowsHTML += `
+            <div class="grid grid-cols-4 gap-4 px-4 py-3 border-b border-slate-100 items-center hover:bg-slate-50 transition-colors">
+                ${cellPresent}
+                ${cellPast}
+                ${cellParticiple}
+                ${cellEs}
+            </div>
+        `;
+    });
+
+    return `
+        <div class="animate-fade-in">
+            <!-- Cabecera y Controles -->
+            <div class="card p-6 mb-6 bg-gradient-to-r from-emerald-800 to-emerald-600 text-white shadow-lg">
+                <h2 class="text-2xl font-bold flex items-center mb-2"><i data-lucide="table-2" class="mr-3 h-6 w-6"></i> Practica la Lista Completa</h2>
+                <p class="text-emerald-100 text-sm mb-6 max-w-2xl">
+                    Selecciona qué columna quieres ocultar y pon a prueba tu memoria llenando los espacios en blanco. Puedes usar la tecla "Enter" para verificar tu respuesta.
+                </p>
+                
+                <div class="flex flex-wrap gap-2 items-center">
+                    <span class="text-sm font-semibold mr-2">Ocultar columna:</span>
+                    <button class="btn ${practiceTableMode === 'present' ? 'bg-white text-emerald-800' : 'bg-emerald-900/40 text-emerald-100 hover:bg-emerald-800'} rounded-xl" onclick="setPracticeTableMode('present')">Presente</button>
+                    <button class="btn ${practiceTableMode === 'past' ? 'bg-white text-emerald-800' : 'bg-emerald-900/40 text-emerald-100 hover:bg-emerald-800'} rounded-xl" onclick="setPracticeTableMode('past')">Pasado</button>
+                    <button class="btn ${practiceTableMode === 'participle' ? 'bg-white text-emerald-800' : 'bg-emerald-900/40 text-emerald-100 hover:bg-emerald-800'} rounded-xl" onclick="setPracticeTableMode('participle')">Participio</button>
+                    <button class="btn ${practiceTableMode === 'es' ? 'bg-white text-emerald-800' : 'bg-emerald-900/40 text-emerald-100 hover:bg-emerald-800'} rounded-xl" onclick="setPracticeTableMode('es')">Español</button>
+                    
+                    <div class="w-px h-6 bg-emerald-400 mx-2"></div>
+                    
+                    <button class="btn ${practiceTableMode === 'random' ? 'bg-yellow-400 text-emerald-900 font-bold shadow-md' : 'bg-emerald-900/40 text-emerald-100 hover:bg-emerald-800'} rounded-xl" onclick="setPracticeTableMode('random')">
+                        <i data-lucide="dices" class="mr-2 h-4 w-4"></i> Al Azar
+                    </button>
+                </div>
+            </div>
+
+            <!-- Tabla -->
+            <div class="card overflow-hidden bg-white shadow-sm border border-slate-200">
+                <div class="overflow-x-auto min-w-[700px]">
+                    <!-- Encabezados de la Tabla -->
+                    <div class="grid grid-cols-4 gap-4 px-4 py-3 bg-slate-100 border-b border-slate-200 font-bold text-slate-700 text-sm tracking-wider uppercase">
+                        <div>Presente</div>
+                        <div>Pasado</div>
+                        <div>Participio</div>
+                        <div>Español</div>
+                    </div>
+                    
+                    <!-- Filas generadas dinámicamente -->
+                    <div class="divide-y divide-slate-100">
+                        ${rowsHTML}
+                    </div>
+                </div>
+            </div>
+            
+            <div class="mt-6 flex justify-center pb-8">
+                <button class="btn bg-emerald-600 text-white hover:bg-emerald-700 rounded-xl px-8 py-3 shadow-md font-bold text-lg" onclick="checkAllPracticeTable()">
+                    <i data-lucide="check-square" class="mr-2 h-5 w-5"></i> Verificar Todas Mis Respuestas
+                </button>
+            </div>
+        </div>
+    `;
+}
+
+// ==========================================
 // 6. MOTOR PRINCIPAL DE RENDERIZADO
 // ==========================================
 
@@ -1276,6 +1456,7 @@ function renderApp() {
     else if (activeTab === 'movie') activeContent = renderMovieMode();
     else if (activeTab === 'games') activeContent = renderGames();
     else if (activeTab === 'pro-games') activeContent = renderProGames();
+    else if (activeTab === 'practice-table') activeContent = renderPracticeTable();
 
     appContainer.innerHTML = `
         <div class="min-h-screen bg-slate-50 p-4 text-slate-900 md:p-8 pb-20">
