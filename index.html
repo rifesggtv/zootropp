@@ -3,815 +3,1152 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VerbMaster English II</title>
+    <title>Verb Quest: Simple Past</title>
+    
     <!-- Tailwind CSS para el diseño -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Lucide Icons para los iconos -->
+    
+    <!-- Lucide Icons para la iconografía -->
     <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <!-- Estilos personalizados y de animación (Imitando Shadcn UI) -->
     <style>
-        /* Animaciones y estilos 3D para las tarjetas */
-        .animate-fade-in { animation: fadeIn 0.4s ease-out; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        /* Animaciones suaves */
+        .animate-fade-in { 
+            animation: fadeIn 0.4s ease-out; 
+        }
         
-        .perspective-1000 { perspective: 1000px; }
-        .transform-style-3d { transform-style: preserve-3d; }
-        .backface-hidden { backface-visibility: hidden; }
-        .rotate-y-180 { transform: rotateY(180deg); }
+        @keyframes fadeIn { 
+            from { opacity: 0; transform: translateY(10px); } 
+            to { opacity: 1; transform: translateY(0); } 
+        }
+
+        /* Estilos base del body */
+        body { 
+            background-color: #f8fafc; 
+            color: #0f172a; 
+            font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        }
+
+        /* Estilos de las tarjetas (Card) */
+        .card { 
+            background-color: white; 
+            border-radius: 1rem; 
+            border: 1px solid #e2e8f0; 
+            box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05); 
+        }
+
+        /* Estilos base de los botones (Button) */
+        .btn { 
+            display: inline-flex; 
+            align-items: center; 
+            justify-content: center; 
+            border-radius: 0.75rem; 
+            font-weight: 500; 
+            transition-property: color, background-color, border-color, text-decoration-color, fill, stroke; 
+            transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1); 
+            transition-duration: 150ms; 
+            font-size: 0.875rem; 
+            line-height: 1.25rem; 
+            padding-left: 1rem; 
+            padding-right: 1rem; 
+            padding-top: 0.5rem; 
+            padding-bottom: 0.5rem; 
+            cursor: pointer;
+        }
+
+        /* Variantes de botones */
+        .btn-primary { 
+            background-color: #0f172a; 
+            color: #f8fafc; 
+        }
         
-        /* Transiciones suaves */
-        .card-transition { transition: all 0.3s ease; }
+        .btn-primary:hover { 
+            background-color: #1e293b; 
+        }
+        
+        .btn-outline { 
+            border: 1px solid #e2e8f0; 
+            background-color: transparent; 
+        }
+        
+        .btn-outline:hover { 
+            background-color: #f1f5f9; 
+            color: #0f172a; 
+        }
+
+        /* Estilos de los inputs (Input y Select) */
+        .input { 
+            display: flex; 
+            height: 2.5rem; 
+            width: 100%; 
+            border-radius: 0.75rem; 
+            border: 1px solid #e2e8f0; 
+            background-color: white; 
+            padding-left: 0.75rem; 
+            padding-right: 0.75rem; 
+            padding-top: 0.5rem; 
+            padding-bottom: 0.5rem; 
+            font-size: 0.875rem; 
+            line-height: 1.25rem; 
+        }
+        
+        .input:focus { 
+            outline: 2px solid transparent; 
+            outline-offset: 2px; 
+            box-shadow: 0 0 0 2px #0f172a; 
+        }
+
+        /* Estilos de las etiquetas (Badge) */
+        .badge { 
+            display: inline-flex; 
+            align-items: center; 
+            border-radius: 9999px; 
+            border: 1px solid transparent; 
+            padding-left: 0.625rem; 
+            padding-right: 0.625rem; 
+            padding-top: 0.125rem; 
+            padding-bottom: 0.125rem; 
+            font-size: 0.75rem; 
+            line-height: 1rem; 
+            font-weight: 600; 
+        }
+        
+        .badge-default { 
+            background-color: #0f172a; 
+            color: #f8fafc; 
+        }
+        
+        .badge-secondary { 
+            background-color: #f1f5f9; 
+            color: #0f172a; 
+        }
+
+        /* Estilos de las pestañas (Tabs) */
+        .tab-trigger {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            white-space: nowrap;
+            border-radius: 0.375rem;
+            padding: 0.375rem 0.75rem;
+            font-size: 0.875rem;
+            font-weight: 500;
+            transition: all 150ms;
+            cursor: pointer;
+        }
+
+        .tab-trigger:focus-visible {
+            outline: 2px solid #0f172a;
+            outline-offset: 2px;
+        }
+
+        .tab-active {
+            background-color: white;
+            color: #0f172a;
+            box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+        }
+
+        .tab-inactive {
+            color: #64748b;
+        }
+
+        .tab-inactive:hover {
+            color: #0f172a;
+        }
     </style>
 </head>
-<body class="min-h-screen bg-slate-50 text-slate-800 font-sans">
+<body>
 
+    <!-- Contenedor principal donde se renderizará la App -->
     <div id="app"></div>
 
 <script>
-// --- DATOS ---
-const verbsData = [
-  { present: 'accept', past: 'accepted', participle: 'accepted', spanish: 'aceptar', type: 'regular', sound: 'id', pron: 'akséptid' },
-  { present: 'add', past: 'added', participle: 'added', spanish: 'agregar', type: 'regular', sound: 'id', pron: 'ádid' },
-  { present: 'arrive', past: 'arrived', participle: 'arrived', spanish: 'llegar', type: 'regular', sound: 'd', pron: 'arraivd' },
-  { present: 'ask', past: 'asked', participle: 'asked', spanish: 'preguntar', type: 'regular', sound: 't', pron: 'askt' },
-  { present: 'be', past: 'was/were', participle: 'been', spanish: 'ser/estar', type: 'irregular', sound: null, pron: 'was/wer' },
-  { present: 'become', past: 'became', participle: 'become', spanish: 'convertirse', type: 'irregular', sound: null, pron: 'bikeim' },
-  { present: 'begin', past: 'began', participle: 'begun', spanish: 'comenzar', type: 'irregular', sound: null, pron: 'bigan' },
-  { present: 'believe', past: 'believed', participle: 'believed', spanish: 'creer', type: 'regular', sound: 'd', pron: 'bilívd' },
-  { present: 'bring', past: 'brought', participle: 'brought', spanish: 'traer', type: 'irregular', sound: null, pron: 'brot' },
-  { present: 'buy', past: 'bought', participle: 'bought', spanish: 'comprar', type: 'irregular', sound: null, pron: 'bot' },
-  { present: 'call', past: 'called', participle: 'called', spanish: 'llamar', type: 'regular', sound: 'd', pron: 'cold' },
-  { present: 'change', past: 'changed', participle: 'changed', spanish: 'cambiar', type: 'regular', sound: 'd', pron: 'cheinyd' },
-  { present: 'clean', past: 'cleaned', participle: 'cleaned', spanish: 'limpiar', type: 'regular', sound: 'd', pron: 'clind' },
-  { present: 'come', past: 'came', participle: 'come', spanish: 'venir', type: 'irregular', sound: null, pron: 'keim' },
-  { present: 'cook', past: 'cooked', participle: 'cooked', spanish: 'cocinar', type: 'regular', sound: 't', pron: 'kukt' },
-  { present: 'dance', past: 'danced', participle: 'danced', spanish: 'bailar', type: 'regular', sound: 't', pron: 'danst' },
-  { present: 'decide', past: 'decided', participle: 'decided', spanish: 'decidir', type: 'regular', sound: 'id', pron: 'disaídid' },
-  { present: 'do', past: 'did', participle: 'done', spanish: 'hacer', type: 'irregular', sound: null, pron: 'did' },
-  { present: 'drink', past: 'drank', participle: 'drunk', spanish: 'beber', type: 'irregular', sound: null, pron: 'drank' },
-  { present: 'drive', past: 'drove', participle: 'driven', spanish: 'conducir', type: 'irregular', sound: null, pron: 'drouv' },
-  { present: 'eat', past: 'ate', participle: 'eaten', spanish: 'comer', type: 'irregular', sound: null, pron: 'eit' },
-  { present: 'enjoy', past: 'enjoyed', participle: 'enjoyed', spanish: 'disfrutar', type: 'regular', sound: 'd', pron: 'enyóid' },
-  { present: 'fall', past: 'fell', participle: 'fallen', spanish: 'caer', type: 'irregular', sound: null, pron: 'fel' },
-  { present: 'feel', past: 'felt', participle: 'felt', spanish: 'sentir', type: 'irregular', sound: null, pron: 'felt' },
-  { present: 'find', past: 'found', participle: 'found', spanish: 'encontrar', type: 'irregular', sound: null, pron: 'faund' },
-  { present: 'finish', past: 'finished', participle: 'finished', spanish: 'terminar', type: 'regular', sound: 't', pron: 'finisht' },
-  { present: 'fix', past: 'fixed', participle: 'fixed', spanish: 'arreglar', type: 'regular', sound: 't', pron: 'fikst' },
-  { present: 'fly', past: 'flew', participle: 'flown', spanish: 'volar', type: 'irregular', sound: null, pron: 'flu' },
-  { present: 'forget', past: 'forgot', participle: 'forgotten', spanish: 'olvidar', type: 'irregular', sound: null, pron: 'forgot' },
-  { present: 'get', past: 'got', participle: 'gotten', spanish: 'obtener', type: 'irregular', sound: null, pron: 'got' },
-  { present: 'give', past: 'gave', participle: 'given', spanish: 'dar', type: 'irregular', sound: null, pron: 'geiv' },
-  { present: 'go', past: 'went', participle: 'gone', spanish: 'ir', type: 'irregular', sound: null, pron: 'went' },
-  { present: 'grow', past: 'grew', participle: 'grown', spanish: 'crecer', type: 'irregular', sound: null, pron: 'gru' },
-  { present: 'have', past: 'had', participle: 'had', spanish: 'tener', type: 'irregular', sound: null, pron: 'jad' },
-  { present: 'hear', past: 'heard', participle: 'heard', spanish: 'escuchar/oír', type: 'irregular', sound: null, pron: 'herd' },
-  { present: 'help', past: 'helped', participle: 'helped', spanish: 'ayudar', type: 'regular', sound: 't', pron: 'jelpt' },
-  { present: 'jump', past: 'jumped', participle: 'jumped', spanish: 'saltar', type: 'regular', sound: 't', pron: 'yompt' },
-  { present: 'know', past: 'knew', participle: 'known', spanish: 'saber/conocer', type: 'irregular', sound: null, pron: 'niu' },
-  { present: 'laugh', past: 'laughed', participle: 'laughed', spanish: 'reír', type: 'regular', sound: 't', pron: 'laft' },
-  { present: 'learn', past: 'learned', participle: 'learned', spanish: 'aprender', type: 'regular', sound: 'd', pron: 'lernd' },
-  { present: 'leave', past: 'left', participle: 'left', spanish: 'salir/dejar', type: 'irregular', sound: null, pron: 'left' },
-  { present: 'like', past: 'liked', participle: 'liked', spanish: 'gustar', type: 'regular', sound: 't', pron: 'laikt' },
-  { present: 'listen', past: 'listened', participle: 'listened', spanish: 'escuchar', type: 'regular', sound: 'd', pron: 'lísend' },
-  { present: 'live', past: 'lived', participle: 'lived', spanish: 'vivir', type: 'regular', sound: 'd', pron: 'livd' },
-  { present: 'look', past: 'looked', participle: 'looked', spanish: 'mirar', type: 'regular', sound: 't', pron: 'lukt' },
-  { present: 'love', past: 'loved', participle: 'loved', spanish: 'amar', type: 'regular', sound: 'd', pron: 'lovd' },
-  { present: 'make', past: 'made', participle: 'made', spanish: 'hacer/fabricar', type: 'irregular', sound: null, pron: 'meid' },
-  { present: 'meet', past: 'met', participle: 'met', spanish: 'conocer/reunirse', type: 'irregular', sound: null, pron: 'met' },
-  { present: 'need', past: 'needed', participle: 'needed', spanish: 'necesitar', type: 'regular', sound: 'id', pron: 'níidid' },
-  { present: 'open', past: 'opened', participle: 'opened', spanish: 'abrir', type: 'regular', sound: 'd', pron: 'oupend' },
-  { present: 'pay', past: 'paid', participle: 'paid', spanish: 'pagar', type: 'irregular', sound: null, pron: 'peid' },
-  { present: 'play', past: 'played', participle: 'played', spanish: 'jugar', type: 'regular', sound: 'd', pron: 'pleid' },
-  { present: 'read', past: 'read', participle: 'read', spanish: 'leer', type: 'irregular', sound: null, pron: 'red' },
-  { present: 'remember', past: 'remembered', participle: 'remembered', spanish: 'recordar', type: 'regular', sound: 'd', pron: 'rimémberd' },
-  { present: 'run', past: 'ran', participle: 'run', spanish: 'correr', type: 'irregular', sound: null, pron: 'ran' },
-  { present: 'say', past: 'said', participle: 'said', spanish: 'decir', type: 'irregular', sound: null, pron: 'sed' },
-  { present: 'see', past: 'saw', participle: 'seen', spanish: 'ver', type: 'irregular', sound: null, pron: 'so' },
-  { present: 'sing', past: 'sang', participle: 'sung', spanish: 'cantar', type: 'irregular', sound: null, pron: 'sang' },
-  { present: 'sit', past: 'sat', participle: 'sat', spanish: 'sentarse', type: 'irregular', sound: null, pron: 'sat' },
-  { present: 'sleep', past: 'slept', participle: 'slept', spanish: 'dormir', type: 'irregular', sound: null, pron: 'slept' },
-  { present: 'speak', past: 'spoke', participle: 'spoken', spanish: 'hablar', type: 'irregular', sound: null, pron: 'spouk' },
-  { present: 'start', past: 'started', participle: 'started', spanish: 'empezar', type: 'regular', sound: 'id', pron: 'stártid' },
-  { present: 'stay', past: 'stayed', participle: 'stayed', spanish: 'quedarse', type: 'regular', sound: 'd', pron: 'steid' },
-  { present: 'stop', past: 'stopped', participle: 'stopped', spanish: 'detener', type: 'regular', sound: 't', pron: 'stopt' },
-  { present: 'study', past: 'studied', participle: 'studied', spanish: 'estudiar', type: 'regular', sound: 'd', pron: 'stádid' },
-  { present: 'swim', past: 'swam', participle: 'swum', spanish: 'nadar', type: 'irregular', sound: null, pron: 'swam' },
-  { present: 'take', past: 'took', participle: 'taken', spanish: 'tomar', type: 'irregular', sound: null, pron: 'tuk' },
-  { present: 'talk', past: 'talked', participle: 'talked', spanish: 'hablar', type: 'regular', sound: 't', pron: 'tokt' },
-  { present: 'teach', past: 'taught', participle: 'taught', spanish: 'enseñar', type: 'irregular', sound: null, pron: 'tot' },
-  { present: 'tell', past: 'told', participle: 'told', spanish: 'contar/decir', type: 'irregular', sound: null, pron: 'tould' },
-  { present: 'think', past: 'thought', participle: 'thought', spanish: 'pensar', type: 'irregular', sound: null, pron: 'zot' },
-  { present: 'try', past: 'tried', participle: 'tried', spanish: 'intentar', type: 'regular', sound: 'd', pron: 'traid' },
-  { present: 'use', past: 'used', participle: 'used', spanish: 'usar', type: 'regular', sound: 'd', pron: 'iuzd' },
-  { present: 'visit', past: 'visited', participle: 'visited', spanish: 'visitar', type: 'regular', sound: 'id', pron: 'vísitid' },
-  { present: 'wait', past: 'waited', participle: 'waited', spanish: 'esperar', type: 'regular', sound: 'id', pron: 'wéitid' },
-  { present: 'walk', past: 'walked', participle: 'walked', spanish: 'caminar', type: 'regular', sound: 't', pron: 'wokt' },
-  { present: 'want', past: 'wanted', participle: 'wanted', spanish: 'querer', type: 'regular', sound: 'id', pron: 'wóntid' },
-  { present: 'wash', past: 'washed', participle: 'washed', spanish: 'lavar', type: 'regular', sound: 't', pron: 'washt' },
-  { present: 'watch', past: 'watched', participle: 'watched', spanish: 'observar', type: 'regular', sound: 't', pron: 'watcht' },
-  { present: 'win', past: 'won', participle: 'won', spanish: 'ganar', type: 'irregular', sound: null, pron: 'won' },
-  { present: 'work', past: 'worked', participle: 'worked', spanish: 'trabajar', type: 'regular', sound: 't', pron: 'workt' },
-  { present: 'write', past: 'wrote', participle: 'written', spanish: 'escribir', type: 'irregular', sound: null, pron: 'rout' }
+// ==========================================
+// 1. DATOS EXACTOS PROPORCIONADOS
+// ==========================================
+
+const verbs = [
+  { base: "accept", past: "accepted", participle: "accepted", es: "aceptar", pronunciation: "aksépt / akséptid", type: "regular", sound: "/id/" },
+  { base: "add", past: "added", participle: "added", es: "agregar", pronunciation: "ad / ádid", type: "regular", sound: "/id/" },
+  { base: "amaze", past: "amazed", participle: "amazed", es: "asombrar / sorprender", pronunciation: "améiz / améizd", type: "regular", sound: "/d/" },
+  { base: "answer", past: "answered", participle: "answered", es: "responder", pronunciation: "ánser / ánserd", type: "regular", sound: "/d/" },
+  { base: "arrive", past: "arrived", participle: "arrived", es: "llegar", pronunciation: "arraiv / arraivd", type: "regular", sound: "/d/" },
+  { base: "ask", past: "asked", participle: "asked", es: "preguntar", pronunciation: "ask / askt", type: "regular", sound: "/t/" },
+  { base: "be", past: "was / were", participle: "been", es: "ser / estar", pronunciation: "bi / was / wer / bin", type: "irregular", sound: "irregular" },
+  { base: "become", past: "became", participle: "become", es: "convertirse", pronunciation: "bicom / bikeim / bicom", type: "irregular", sound: "irregular" },
+  { base: "begin", past: "began", participle: "begun", es: "comenzar", pronunciation: "biguin / bigan / bigon", type: "irregular", sound: "irregular" },
+  { base: "believe", past: "believed", participle: "believed", es: "creer", pronunciation: "bilív / bilívd", type: "regular", sound: "/d/" },
+  { base: "belong", past: "belonged", participle: "belonged", es: "pertenecer", pronunciation: "bilong / bilongd", type: "regular", sound: "/d/" },
+  { base: "break", past: "broke", participle: "broken", es: "romper", pronunciation: "breik / brouk / brouken", type: "irregular", sound: "irregular" },
+  { base: "breathe", past: "breathed", participle: "breathed", es: "respirar", pronunciation: "briid / briid-d", type: "regular", sound: "/d/" },
+  { base: "bring", past: "brought", participle: "brought", es: "traer", pronunciation: "bring / brot", type: "irregular", sound: "irregular" },
+  { base: "build", past: "built", participle: "built", es: "construir", pronunciation: "bild / bilt", type: "irregular", sound: "irregular" },
+  { base: "buy", past: "bought", participle: "bought", es: "comprar", pronunciation: "bai / bot", type: "irregular", sound: "irregular" },
+  { base: "call", past: "called", participle: "called", es: "llamar", pronunciation: "kol / kold", type: "regular", sound: "/d/" },
+  { base: "can", past: "could", participle: "—", es: "poder", pronunciation: "kan / kud", type: "irregular", sound: "irregular" },
+  { base: "carry", past: "carried", participle: "carried", es: "cargar / llevar", pronunciation: "kéri / kérid", type: "regular", sound: "/d/" },
+  { base: "catch", past: "caught", participle: "caught", es: "atrapar", pronunciation: "katch / kot", type: "irregular", sound: "irregular" },
+  { base: "change", past: "changed", participle: "changed", es: "cambiar", pronunciation: "cheinch / cheinjd", type: "regular", sound: "/d/" },
+  { base: "clean", past: "cleaned", participle: "cleaned", es: "limpiar", pronunciation: "klin / klind", type: "regular", sound: "/d/" },
+  { base: "climb", past: "climbed", participle: "climbed", es: "escalar", pronunciation: "claim / claimd", type: "regular", sound: "/d/" },
+  { base: "close", past: "closed", participle: "closed", es: "cerrar", pronunciation: "clouz / clouzd", type: "regular", sound: "/d/" },
+  { base: "come", past: "came", participle: "come", es: "venir", pronunciation: "com / keim / com", type: "irregular", sound: "irregular" },
+  { base: "consider", past: "considered", participle: "considered", es: "considerar", pronunciation: "consíder / consíderd", type: "regular", sound: "/d/" },
+  { base: "cook", past: "cooked", participle: "cooked", es: "cocinar", pronunciation: "kuk / kukt", type: "regular", sound: "/t/" },
+  { base: "count", past: "counted", participle: "counted", es: "contar", pronunciation: "kaunt / káuntid", type: "regular", sound: "/id/" },
+  { base: "cry", past: "cried", participle: "cried", es: "llorar", pronunciation: "krai / kraid", type: "regular", sound: "/d/" },
+  { base: "cut", past: "cut", participle: "cut", es: "cortar", pronunciation: "kot / kot", type: "irregular", sound: "irregular" },
+  { base: "damage", past: "damaged", participle: "damaged", es: "dañar", pronunciation: "dámech / dámejd", type: "regular", sound: "/d/" },
+  { base: "dance", past: "danced", participle: "danced", es: "bailar", pronunciation: "dans / danst", type: "regular", sound: "/t/" },
+  { base: "dare", past: "dared", participle: "dared", es: "atreverse / retar", pronunciation: "der / derd", type: "regular", sound: "/d/" },
+  { base: "date", past: "dated", participle: "dated", es: "fechar / citar", pronunciation: "deit / déitid", type: "regular", sound: "/id/" },
+  { base: "decide", past: "decided", participle: "decided", es: "decidir", pronunciation: "disaíd / disaídid", type: "regular", sound: "/id/" },
+  { base: "deliver", past: "delivered", participle: "delivered", es: "entregar", pronunciation: "delíver / delíverd", type: "regular", sound: "/d/" },
+  { base: "do", past: "did", participle: "done", es: "hacer", pronunciation: "du / did / don", type: "irregular", sound: "irregular" },
+  { base: "dress", past: "dressed", participle: "dressed", es: "vestir", pronunciation: "dres / drest", type: "regular", sound: "/t/" },
+  { base: "drink", past: "drank", participle: "drunk", es: "beber / tomar", pronunciation: "drink / drank / dronk", type: "irregular", sound: "irregular" },
+  { base: "drive", past: "drove", participle: "driven", es: "conducir / manejar", pronunciation: "draiv / drouv / driven", type: "irregular", sound: "irregular" },
+  { base: "eat", past: "ate", participle: "eaten", es: "comer", pronunciation: "iit / eit / iiten", type: "irregular", sound: "irregular" },
+  { base: "end", past: "ended", participle: "ended", es: "terminar", pronunciation: "end / éndid", type: "regular", sound: "/id/" },
+  { base: "enjoy", past: "enjoyed", participle: "enjoyed", es: "disfrutar", pronunciation: "enyói / enyóid", type: "regular", sound: "/d/" },
+  { base: "erase", past: "erased", participle: "erased", es: "borrar", pronunciation: "ireiz / ireizd", type: "regular", sound: "/d/" },
+  { base: "expect", past: "expected", participle: "expected", es: "esperar / esperar algo", pronunciation: "ekspékt / ekspéktid", type: "regular", sound: "/id/" },
+  { base: "explain", past: "explained", participle: "explained", es: "explicar", pronunciation: "eksplein / ekspleind", type: "regular", sound: "/d/" },
+  { base: "fall", past: "fell", participle: "fallen", es: "caer", pronunciation: "fol / fel / folen", type: "irregular", sound: "irregular" },
+  { base: "feel", past: "felt", participle: "felt", es: "sentir", pronunciation: "fiil / felt", type: "irregular", sound: "irregular" },
+  { base: "fight", past: "fought", participle: "fought", es: "pelear", pronunciation: "fait / fot", type: "irregular", sound: "irregular" },
+  { base: "fill", past: "filled", participle: "filled", es: "llenar", pronunciation: "fil / fild", type: "regular", sound: "/d/" },
+  { base: "find", past: "found", participle: "found", es: "encontrar", pronunciation: "faind / faund", type: "irregular", sound: "irregular" },
+  { base: "finish", past: "finished", participle: "finished", es: "terminar", pronunciation: "finish / finisht", type: "regular", sound: "/t/" },
+  { base: "fix", past: "fixed", participle: "fixed", es: "arreglar", pronunciation: "fiks / fikst", type: "regular", sound: "/t/" },
+  { base: "fly", past: "flew", participle: "flown", es: "volar", pronunciation: "flai / flu / floun", type: "irregular", sound: "irregular" },
+  { base: "follow", past: "followed", participle: "followed", es: "seguir", pronunciation: "fólou / fóloud", type: "regular", sound: "/d/" },
+  { base: "forget", past: "forgot", participle: "forgotten", es: "olvidar", pronunciation: "forguet / forgot / forgóten", type: "irregular", sound: "irregular" },
+  { base: "get", past: "got", participle: "got", es: "conseguir / obtener", pronunciation: "guet / got", type: "irregular", sound: "irregular" },
+  { base: "give", past: "gave", participle: "given", es: "dar", pronunciation: "guiv / gueiv / guiven", type: "irregular", sound: "irregular" },
+  { base: "go", past: "went", participle: "gone", es: "ir", pronunciation: "gou / went / gon", type: "irregular", sound: "irregular" },
+  { base: "grow", past: "grew", participle: "grown", es: "crecer", pronunciation: "grou / gru / groun", type: "irregular", sound: "irregular" },
+  { base: "happen", past: "happened", participle: "happened", es: "suceder", pronunciation: "jápen / jápend", type: "regular", sound: "/d/" },
+  { base: "have", past: "had", participle: "had", es: "tener / haber", pronunciation: "jav / jad", type: "irregular", sound: "irregular" },
+  { base: "hear", past: "heard", participle: "heard", es: "oír / escuchar", pronunciation: "jir / jerd", type: "irregular", sound: "irregular" },
+  { base: "help", past: "helped", participle: "helped", es: "ayudar", pronunciation: "jelp / jelpt", type: "regular", sound: "/t/" },
+  { base: "hope", past: "hoped", participle: "hoped", es: "esperar / tener esperanza", pronunciation: "joup / joupt", type: "regular", sound: "/t/" },
+  { base: "hurry", past: "hurried", participle: "hurried", es: "apurarse", pronunciation: "jéri / jérid", type: "regular", sound: "/d/" },
+  { base: "intend", past: "intended", participle: "intended", es: "intentar / tener intención", pronunciation: "inténd / inténdid", type: "regular", sound: "/id/" },
+  { base: "jump", past: "jumped", participle: "jumped", es: "saltar / brincar", pronunciation: "yomp / yompt", type: "regular", sound: "/t/" },
+  { base: "keep", past: "kept", participle: "kept", es: "mantener / guardar", pronunciation: "kiip / kept", type: "irregular", sound: "irregular" },
+  { base: "kiss", past: "kissed", participle: "kissed", es: "besar", pronunciation: "kis / kist", type: "regular", sound: "/t/" },
+  { base: "know", past: "knew", participle: "known", es: "saber / conocer", pronunciation: "nou / niu / noun", type: "irregular", sound: "irregular" },
+  { base: "laugh", past: "laughed", participle: "laughed", es: "reír", pronunciation: "laf / laft", type: "regular", sound: "/t/" },
+  { base: "learn", past: "learned", participle: "learned", es: "aprender", pronunciation: "lern / lernd", type: "regular", sound: "/d/" },
+  { base: "leave", past: "left", participle: "left", es: "salir / dejar", pronunciation: "liiv / left", type: "irregular", sound: "irregular" },
+  { base: "like", past: "liked", participle: "liked", es: "gustar", pronunciation: "laik / laikt", type: "regular", sound: "/t/" },
+  { base: "listen", past: "listened", participle: "listened", es: "escuchar", pronunciation: "lísen / lísend", type: "regular", sound: "/d/" },
+  { base: "live", past: "lived", participle: "lived", es: "vivir", pronunciation: "liv / livd", type: "regular", sound: "/d/" },
+  { base: "look", past: "looked", participle: "looked", es: "mirar", pronunciation: "luk / lukt", type: "regular", sound: "/t/" },
+  { base: "lose", past: "lost", participle: "lost", es: "perder", pronunciation: "luz / lost", type: "irregular", sound: "irregular" },
+  { base: "love", past: "loved", participle: "loved", es: "amar", pronunciation: "lov / lovd", type: "regular", sound: "/d/" },
+  { base: "make", past: "made", participle: "made", es: "hacer / fabricar", pronunciation: "meik / meid", type: "irregular", sound: "irregular" },
+  { base: "mean", past: "meant", participle: "meant", es: "significar", pronunciation: "miin / ment", type: "irregular", sound: "irregular" },
+  { base: "meet", past: "met", participle: "met", es: "conocer / reunirse", pronunciation: "miit / met", type: "irregular", sound: "irregular" },
+  { base: "miss", past: "missed", participle: "missed", es: "extrañar / perder", pronunciation: "mis / mist", type: "regular", sound: "/t/" },
+  { base: "move", past: "moved", participle: "moved", es: "mover / mudarse", pronunciation: "muv / muvd", type: "regular", sound: "/d/" },
+  { base: "name", past: "named", participle: "named", es: "nombrar", pronunciation: "neim / neimd", type: "regular", sound: "/d/" },
+  { base: "need", past: "needed", participle: "needed", es: "necesitar", pronunciation: "niid / níidid", type: "regular", sound: "/id/" },
+  { base: "offer", past: "offered", participle: "offered", es: "ofrecer", pronunciation: "ófer / óferd", type: "regular", sound: "/d/" },
+  { base: "open", past: "opened", participle: "opened", es: "abrir", pronunciation: "óupen / óupend", type: "regular", sound: "/d/" },
+  { base: "order", past: "ordered", participle: "ordered", es: "ordenar / pedir", pronunciation: "órder / órderd", type: "regular", sound: "/d/" },
+  { base: "pay", past: "paid", participle: "paid", es: "pagar", pronunciation: "pei / peid", type: "irregular", sound: "irregular" },
+  { base: "plan", past: "planned", participle: "planned", es: "planear", pronunciation: "plan / pland", type: "regular", sound: "/d/" },
+  { base: "plant", past: "planted", participle: "planted", es: "plantar", pronunciation: "plant / plántid", type: "regular", sound: "/id/" },
+  { base: "play", past: "played", participle: "played", es: "jugar / tocar", pronunciation: "plei / pleid", type: "regular", sound: "/d/" },
+  { base: "point", past: "pointed", participle: "pointed", es: "señalar", pronunciation: "point / póintid", type: "regular", sound: "/id/" },
+  { base: "practice", past: "practiced", participle: "practiced", es: "practicar", pronunciation: "práctis / práctist", type: "regular", sound: "/t/" },
+  { base: "push", past: "pushed", participle: "pushed", es: "empujar", pronunciation: "push / pusht", type: "regular", sound: "/t/" },
+  { base: "put", past: "put", participle: "put", es: "poner", pronunciation: "put / put", type: "irregular", sound: "irregular" },
+  { base: "rain", past: "rained", participle: "rained", es: "llover", pronunciation: "rein / reind", type: "regular", sound: "/d/" },
+  { base: "read", past: "read", participle: "read", es: "leer", pronunciation: "riid / red", type: "irregular", sound: "irregular" },
+  { base: "remember", past: "remembered", participle: "remembered", es: "recordar", pronunciation: "rimémber / rimémbérd", type: "regular", sound: "/d/" },
+  { base: "rent", past: "rented", participle: "rented", es: "rentar / alquilar", pronunciation: "rent / réntid", type: "regular", sound: "/id/" },
+  { base: "repeat", past: "repeated", participle: "repeated", es: "repetir", pronunciation: "ripíit / ripítid", type: "regular", sound: "/id/" },
+  { base: "resist", past: "resisted", participle: "resisted", es: "resistir", pronunciation: "risíst / risístid", type: "regular", sound: "/id/" },
+  { base: "ring", past: "rang", participle: "rung", es: "sonar / llamar", pronunciation: "ring / rang / rong", type: "irregular", sound: "irregular" },
+  { base: "rise", past: "rose", participle: "risen", es: "subir / levantarse", pronunciation: "raiz / rouz / risen", type: "irregular", sound: "irregular" },
+  { base: "run", past: "ran", participle: "run", es: "correr", pronunciation: "ron / ran / ron", type: "irregular", sound: "irregular" },
+  { base: "say", past: "said", participle: "said", es: "decir", pronunciation: "sei / sed", type: "irregular", sound: "irregular" },
+  { base: "see", past: "saw", participle: "seen", es: "ver", pronunciation: "sii / so / siin", type: "irregular", sound: "irregular" },
+  { base: "sell", past: "sold", participle: "sold", es: "vender", pronunciation: "sel / sould", type: "irregular", sound: "irregular" },
+  { base: "send", past: "sent", participle: "sent", es: "enviar", pronunciation: "send / sent", type: "irregular", sound: "irregular" },
+  { base: "shop", past: "shopped", participle: "shopped", es: "comprar", pronunciation: "shop / shopt", type: "regular", sound: "/t/" },
+  { base: "show", past: "showed", participle: "shown / showed", es: "mostrar", pronunciation: "shou / shoud / shoun", type: "irregular", sound: "irregular" },
+  { base: "sing", past: "sang", participle: "sung", es: "cantar", pronunciation: "sing / sang / song", type: "irregular", sound: "irregular" },
+  { base: "sit", past: "sat", participle: "sat", es: "sentarse", pronunciation: "sit / sat", type: "irregular", sound: "irregular" },
+  { base: "sleep", past: "slept", participle: "slept", es: "dormir", pronunciation: "sliip / slept", type: "irregular", sound: "irregular" },
+  { base: "smoke", past: "smoked", participle: "smoked", es: "fumar", pronunciation: "smouk / smoukt", type: "regular", sound: "/t/" },
+  { base: "speak", past: "spoke", participle: "spoken", es: "hablar", pronunciation: "spiik / spouk / spouken", type: "irregular", sound: "irregular" },
+  { base: "spend", past: "spent", participle: "spent", es: "gastar / pasar tiempo", pronunciation: "spend / spent", type: "irregular", sound: "irregular" },
+  { base: "stand up", past: "stood up", participle: "stood up", es: "ponerse de pie", pronunciation: "stand ap / stud ap", type: "irregular", sound: "irregular" },
+  { base: "start", past: "started", participle: "started", es: "empezar", pronunciation: "start / stártid", type: "regular", sound: "/id/" },
+  { base: "stay", past: "stayed", participle: "stayed", es: "quedarse / permanecer", pronunciation: "stei / steid", type: "regular", sound: "/d/" },
+  { base: "stop", past: "stopped", participle: "stopped", es: "detener", pronunciation: "stop / stopt", type: "regular", sound: "/t/" },
+  { base: "study", past: "studied", participle: "studied", es: "estudiar", pronunciation: "stádi / stádid", type: "regular", sound: "/d/" },
+  { base: "swim", past: "swam", participle: "swum", es: "nadar", pronunciation: "swim / swam / swom", type: "irregular", sound: "irregular" },
+  { base: "take", past: "took", participle: "taken", es: "tomar / llevar", pronunciation: "teik / tuk / teiken", type: "irregular", sound: "irregular" },
+  { base: "talk", past: "talked", participle: "talked", es: "hablar", pronunciation: "tok / tokt", type: "regular", sound: "/t/" },
+  { base: "teach", past: "taught", participle: "taught", es: "enseñar", pronunciation: "tiich / tot", type: "irregular", sound: "irregular" },
+  { base: "tell", past: "told", participle: "told", es: "decir / contar", pronunciation: "tel / tould", type: "irregular", sound: "irregular" },
+  { base: "think", past: "thought", participle: "thought", es: "pensar", pronunciation: "zink / zot", type: "irregular", sound: "irregular" },
+  { base: "throw", past: "threw", participle: "thrown", es: "lanzar / tirar", pronunciation: "zrou / zru / zroun", type: "irregular", sound: "irregular" },
+  { base: "travel", past: "traveled", participle: "traveled", es: "viajar", pronunciation: "trável / tráveld", type: "regular", sound: "/d/" },
+  { base: "try", past: "tried", participle: "tried", es: "intentar / tratar", pronunciation: "trai / traid", type: "regular", sound: "/d/" },
+  { base: "turn", past: "turned", participle: "turned", es: "voltear / girar", pronunciation: "tern / ternd", type: "regular", sound: "/d/" },
+  { base: "understand", past: "understood", participle: "understood", es: "entender", pronunciation: "anderstánd / anderstúd", type: "irregular", sound: "irregular" },
+  { base: "use", past: "used", participle: "used", es: "usar", pronunciation: "iuz / iuzd", type: "regular", sound: "/d/" },
+  { base: "visit", past: "visited", participle: "visited", es: "visitar", pronunciation: "vísit / vísitid", type: "regular", sound: "/id/" },
+  { base: "wait", past: "waited", participle: "waited", es: "esperar", pronunciation: "weit / wéitid", type: "regular", sound: "/id/" },
+  { base: "wake up", past: "woke up", participle: "woken up", es: "despertar", pronunciation: "weik ap / wouk ap / wouken ap", type: "irregular", sound: "irregular" },
+  { base: "walk", past: "walked", participle: "walked", es: "caminar", pronunciation: "wok / wokt", type: "regular", sound: "/t/" },
+  { base: "want", past: "wanted", participle: "wanted", es: "querer", pronunciation: "wont / wóntid", type: "regular", sound: "/id/" },
+  { base: "wash", past: "washed", participle: "washed", es: "lavar", pronunciation: "wash / washt", type: "regular", sound: "/t/" },
+  { base: "watch", past: "watched", participle: "watched", es: "mirar / observar", pronunciation: "watch / watcht", type: "regular", sound: "/t/" },
+  { base: "wear", past: "wore", participle: "worn", es: "usar / llevar puesto", pronunciation: "wer / wor / worn", type: "irregular", sound: "irregular" },
+  { base: "win", past: "won", participle: "won", es: "ganar", pronunciation: "win / won", type: "irregular", sound: "irregular" },
+  { base: "wish", past: "wished", participle: "wished", es: "desear", pronunciation: "wish / wisht", type: "regular", sound: "/t/" },
+  { base: "work", past: "worked", participle: "worked", es: "trabajar", pronunciation: "work / workt", type: "regular", sound: "/t/" },
+  { base: "write", past: "wrote", participle: "written", es: "escribir", pronunciation: "rait / rout / riten", type: "irregular", sound: "irregular" }
 ];
 
-// --- ESTADO GLOBAL ---
-let currentView = 'menu';
-let progress = { points: 0, learnedVerbs: [], quizzesPassed: 0 };
+const movieSentences = [
+  { present: "Manolo loves María.", past: "Manolo loved María.", es: "Manolo amaba a María.", verb: "love" },
+  { present: "María likes Manolo.", past: "María liked Manolo.", es: "A María le gustaba Manolo.", verb: "like" },
+  { present: "Joaquín protects the town.", past: "Joaquín protected the town.", es: "Joaquín protegió el pueblo.", verb: "protect", custom: { past: "protected", pronunciation: "protékt / protéktid", sound: "/id/" } },
+  { present: "Xibalba tricks Manolo.", past: "Xibalba tricked Manolo.", es: "Xibalba engañó a Manolo.", verb: "trick", custom: { past: "tricked", pronunciation: "trik / trikt", sound: "/t/" } },
+  { present: "Manolo dies.", past: "Manolo died.", es: "Manolo murió.", verb: "die", custom: { past: "died", pronunciation: "dai / daid", sound: "/d/" } },
+  { present: "Manolo meets his family.", past: "Manolo met his family.", es: "Manolo se encontró con su familia.", verb: "meet" },
+  { present: "Manolo sings a song.", past: "Manolo sang a song.", es: "Manolo cantó una canción.", verb: "sing" },
+  { present: "Manolo saves the town.", past: "Manolo saved the town.", es: "Manolo salvó el pueblo.", verb: "save", custom: { past: "saved", pronunciation: "seiv / seivd", sound: "/d/" } },
+  { present: "Manolo faces the bull.", past: "Manolo faced the bull.", es: "Manolo enfrentó al toro.", verb: "face", custom: { past: "faced", pronunciation: "feis / feist", sound: "/t/" } },
+  { present: "Manolo apologizes to the bull.", past: "Manolo apologized to the bull.", es: "Manolo se disculpó con el toro.", verb: "apologize", custom: { past: "apologized", pronunciation: "apóloyaiz / apóloyaizd", sound: "/d/" } },
+  { present: "The bull transforms into flowers.", past: "The bull transformed into flowers.", es: "El toro se transformó en flores.", verb: "transform", custom: { past: "transformed", pronunciation: "transform / transformd", sound: "/d/" } },
+  { present: "La Muerte supports Manolo.", past: "La Muerte supported Manolo.", es: "La Muerte apoyó a Manolo.", verb: "support", custom: { past: "supported", pronunciation: "sopórt / sopórtid", sound: "/id/" } },
+  { present: "Xibalba supports Joaquín.", past: "Xibalba supported Joaquín.", es: "Xibalba apoyó a Joaquín.", verb: "support", custom: { past: "supported", pronunciation: "sopórt / sopórtid", sound: "/id/" } },
+  { present: "Xibalba cheats.", past: "Xibalba cheated.", es: "Xibalba hizo trampa.", verb: "cheat", custom: { past: "cheated", pronunciation: "chiit / chíitid", sound: "/id/" } },
+  { present: "Xibalba gives Joaquín the Medal of Everlasting Life.", past: "Xibalba gave Joaquín the Medal of Everlasting Life.", es: "Xibalba le dio a Joaquín la Medalla de la Vida Eterna.", verb: "give" },
+  { present: "Manolo believes María is dead.", past: "Manolo believed María was dead.", es: "Manolo creyó que María estaba muerta.", verb: "believe" },
+  { present: "Manolo feels sad.", past: "Manolo felt sad.", es: "Manolo se sintió triste.", verb: "feel" },
+  { present: "Manolo accepts death.", past: "Manolo accepted death.", es: "Manolo aceptó la muerte.", verb: "accept" },
+  { present: "Manolo goes to the Land of the Remembered.", past: "Manolo went to the Land of the Remembered.", es: "Manolo fue a la Tierra de los Recordados.", verb: "go" },
+  { present: "Manolo sees his mother.", past: "Manolo saw his mother.", es: "Manolo vio a su madre.", verb: "see" },
+  { present: "His family helps him.", past: "His family helped him.", es: "Su familia lo ayudó.", verb: "help" },
+  { present: "Manolo returns to the world of the living.", past: "Manolo returned to the world of the living.", es: "Manolo regresó al mundo de los vivos.", verb: "return", custom: { past: "returned", pronunciation: "ritern / ritérnd", sound: "/d/" } },
+  { present: "Manolo chooses peace.", past: "Manolo chose peace.", es: "Manolo eligió la paz.", verb: "choose", custom: { past: "chose", pronunciation: "chuz / chouz", sound: "irregular" } },
+  { present: "María chooses Manolo.", past: "María chose Manolo.", es: "María eligió a Manolo.", verb: "choose", custom: { past: "chose", pronunciation: "chuz / chouz", sound: "irregular" } },
+  { present: "Joaquín changes.", past: "Joaquín changed.", es: "Joaquín cambió.", verb: "change" },
+  { present: "The movie teaches a lesson.", past: "The movie taught a lesson.", es: "La película enseñó una lección.", verb: "teach" }
+];
 
-// --- UTILIDADES ---
-window.playAudio = (text) => {
-  if ('speechSynthesis' in window) {
+const practiceSentences = [
+  ...movieSentences,
+  { present: "I watch a movie.", past: "I watched a movie.", es: "Vi una película.", verb: "watch" },
+  { present: "She cooks dinner.", past: "She cooked dinner.", es: "Ella cocinó la cena.", verb: "cook" },
+  { present: "They play soccer.", past: "They played soccer.", es: "Ellos jugaron fútbol.", verb: "play" },
+  { present: "We study English.", past: "We studied English.", es: "Estudiamos inglés.", verb: "study" },
+  { present: "He opens the door.", past: "He opened the door.", es: "Él abrió la puerta.", verb: "open" },
+  { present: "I need help.", past: "I needed help.", es: "Necesité ayuda.", verb: "need" },
+  { present: "She wants water.", past: "She wanted water.", es: "Ella quería agua.", verb: "want" },
+  { present: "He asks a question.", past: "He asked a question.", es: "Él hizo una pregunta.", verb: "ask" },
+  { present: "They clean the room.", past: "They cleaned the room.", es: "Ellos limpiaron el cuarto.", verb: "clean" },
+  { present: "I visit my grandmother.", past: "I visited my grandmother.", es: "Visité a mi abuela.", verb: "visit" },
+  { present: "She writes a letter.", past: "She wrote a letter.", es: "Ella escribió una carta.", verb: "write" },
+  { present: "He reads a book.", past: "He read a book.", es: "Él leyó un libro.", verb: "read" },
+  { present: "They go to school.", past: "They went to school.", es: "Ellos fueron a la escuela.", verb: "go" },
+  { present: "I buy a notebook.", past: "I bought a notebook.", es: "Compré un cuaderno.", verb: "buy" },
+  { present: "She drinks juice.", past: "She drank juice.", es: "Ella tomó jugo.", verb: "drink" },
+  { present: "He takes the bus.", past: "He took the bus.", es: "Él tomó el bus.", verb: "take" },
+  { present: "We make a poster.", past: "We made a poster.", es: "Hicimos un póster.", verb: "make" },
+  { present: "They see the teacher.", past: "They saw the teacher.", es: "Ellos vieron al profesor.", verb: "see" },
+  { present: "I find my phone.", past: "I found my phone.", es: "Encontré mi celular.", verb: "find" },
+  { present: "She gives me a gift.", past: "She gave me a gift.", es: "Ella me dio un regalo.", verb: "give" },
+  { present: "He runs in the park.", past: "He ran in the park.", es: "Él corrió en el parque.", verb: "run" },
+  { present: "They sing a song.", past: "They sang a song.", es: "Ellos cantaron una canción.", verb: "sing" },
+  { present: "I feel nervous.", past: "I felt nervous.", es: "Me sentí nervioso.", verb: "feel" },
+  { present: "She understands the lesson.", past: "She understood the lesson.", es: "Ella entendió la lección.", verb: "understand" },
+  { present: "He speaks English.", past: "He spoke English.", es: "Él habló inglés.", verb: "speak" },
+  { present: "I wait for my friend.", past: "I waited for my friend.", es: "Esperé a mi amigo.", verb: "wait" },
+  { present: "They finish the homework.", past: "They finished the homework.", es: "Ellos terminaron la tarea.", verb: "finish" },
+  { present: "She dances at school.", past: "She danced at school.", es: "Ella bailó en el colegio.", verb: "dance" },
+  { present: "He fixes the computer.", past: "He fixed the computer.", es: "Él arregló el computador.", verb: "fix" }
+];
+
+// ==========================================
+// 2. FUNCIONES DE AYUDA (Helpers)
+// ==========================================
+
+const findVerb = (verbName) => {
+    return verbs.find(v => v.base === verbName);
+};
+
+const getVerbInfo = (item) => {
+    return item.custom || findVerb(item.verb) || { past: item.verb, pronunciation: "", sound: "" };
+};
+
+window.speak = (text) => {
+    if (typeof window === "undefined" || !window.speechSynthesis) {
+        alert("Tu navegador no soporta reproducción de voz.");
+        return;
+    }
+    window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = 'en-US';
-    utterance.rate = 0.9;
+    utterance.lang = "en-US";
+    utterance.rate = 0.85;
     window.speechSynthesis.speak(utterance);
-  } else {
-    alert("Tu navegador no soporta reproducción de voz.");
-  }
 };
 
-window.setView = (view) => {
-  currentView = view;
-  renderApp();
+const randomItem = (arr) => {
+    return arr[Math.floor(Math.random() * arr.length)];
 };
 
-window.updateProgress = (newPoints) => {
-  progress.points += newPoints;
-  localStorage.setItem('verbMasterProgress', JSON.stringify(progress));
-  document.getElementById('header-points').innerText = `${progress.points} pts`;
+const normalize = (s) => {
+    return s.trim().toLowerCase().replace(/[.!?]/g, "");
 };
 
-// Cargar progreso al iniciar
-const saved = localStorage.getItem('verbMasterProgress');
-if (saved) {
-  progress = JSON.parse(saved);
+// ==========================================
+// 3. ESTADOS GLOBALES (Reemplazo de useState)
+// ==========================================
+
+let activeTab = 'learn';
+
+let learnQuery = '';
+let learnFilter = 'all';
+
+let builderState = { 
+    subject: "Manolo", 
+    verbName: "love", 
+    complement: "María", 
+    mode: "affirmative" 
+};
+
+// Estados de los juegos
+let gameState = {
+    fillItem: null, 
+    fillAnswer: '', 
+    fillStatus: null,
+    
+    classItem: null, 
+    classResult: null,
+    
+    quizItem: null, 
+    quizChoice: null, 
+    quizOptions: []
+};
+
+// ==========================================
+// 4. LÓGICA DE ACTUALIZACIÓN DE ESTADOS
+// ==========================================
+
+window.setTab = (tab) => { 
+    activeTab = tab; 
+    renderApp(); 
+};
+
+window.setLearnQuery = (val) => { 
+    learnQuery = val; 
+    renderApp(); 
+};
+
+window.setLearnFilter = (val) => { 
+    learnFilter = val; 
+    renderApp(); 
+};
+
+window.updateBuilder = (key, val) => { 
+    builderState[key] = val; 
+    renderApp(); 
+};
+
+// Juego 1: Fill the blanks
+window.initFillGame = () => {
+    if (!gameState.fillItem) {
+        gameState.fillItem = randomItem(practiceSentences);
+    }
+};
+
+window.setFillAnswer = (val) => { 
+    gameState.fillAnswer = val; 
+    renderApp(); 
+};
+
+window.checkFillGame = () => {
+    const info = getVerbInfo(gameState.fillItem);
+    const correctPast = info.past || gameState.fillItem.custom?.past;
+    
+    if (normalize(gameState.fillAnswer) === normalize(correctPast)) {
+        gameState.fillStatus = "ok";
+    } else {
+        gameState.fillStatus = "bad";
+    }
+    
+    renderApp();
+};
+
+window.nextFillGame = () => {
+    gameState.fillItem = randomItem(practiceSentences);
+    gameState.fillAnswer = "";
+    gameState.fillStatus = null;
+    renderApp();
+};
+
+// Juego 2: Classification
+window.initClassGame = () => {
+    if (!gameState.classItem) {
+        gameState.classItem = randomItem(verbs);
+    }
+};
+
+window.pickClassGame = (sound) => {
+    if (sound === gameState.classItem.sound) {
+        gameState.classResult = "ok";
+    } else {
+        gameState.classResult = "bad";
+    }
+    renderApp();
+};
+
+window.nextClassGame = () => {
+    gameState.classItem = randomItem(verbs);
+    gameState.classResult = null;
+    renderApp();
+};
+
+// Juego 3: Quiz
+window.initQuiz = () => {
+    if (!gameState.quizItem) {
+        let item = randomItem(verbs);
+        
+        let wrongOptions = verbs
+            .filter(v => v.past !== item.past)
+            .sort(() => 0.5 - Math.random())
+            .slice(0, 3)
+            .map(v => v.past);
+            
+        let options = [...wrongOptions, item.past].sort(() => 0.5 - Math.random());
+        
+        gameState.quizItem = item;
+        gameState.quizOptions = options;
+        gameState.quizChoice = null;
+    }
+};
+
+window.pickQuiz = (choice) => {
+    gameState.quizChoice = choice;
+    renderApp();
+};
+
+window.nextQuiz = () => {
+    let item = randomItem(verbs);
+    
+    let wrongOptions = verbs
+        .filter(v => v.past !== item.past)
+        .sort(() => 0.5 - Math.random())
+        .slice(0, 3)
+        .map(v => v.past);
+        
+    let options = [...wrongOptions, item.past].sort(() => 0.5 - Math.random());
+    
+    gameState.quizItem = item;
+    gameState.quizOptions = options;
+    gameState.quizChoice = null;
+    
+    renderApp();
+};
+
+// ==========================================
+// 5. FUNCIONES DE RENDERIZADO (Componentes)
+// ==========================================
+
+function renderHeader() {
+    return `
+      <div class="mb-6 rounded-3xl bg-gradient-to-br from-slate-900 to-slate-700 p-6 text-white shadow-lg animate-fade-in">
+        <div>
+          <h1 class="text-3xl font-bold tracking-tight">Verb Quest: Simple Past</h1>
+          <p class="mt-2 max-w-3xl text-sm text-slate-200">
+            Juegos para aprender verbos, formar frases en presente y pasado, practicar pronunciación /t/, /d/, /id/ y preparar el speaking de <em>The Book of Life</em>.
+          </p>
+        </div>
+      </div>
+    `;
 }
 
-// Generador de Botones
-const getButtonHTML = (text, onClick, variant = 'primary', icon = '', extraClass = '') => {
-  const baseStyle = "px-4 py-2 rounded-lg font-semibold transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer";
-  const variants = {
-    primary: "bg-indigo-600 text-white hover:bg-indigo-700 shadow-md",
-    secondary: "bg-white text-indigo-600 border-2 border-indigo-200 hover:border-indigo-600",
-    outline: "border-2 border-gray-300 text-gray-700 hover:bg-gray-50",
-    danger: "bg-rose-500 text-white hover:bg-rose-600 shadow-md",
-    success: "bg-emerald-500 text-white hover:bg-emerald-600 shadow-md",
-  };
-  return `<button onclick="${onClick}" class="${baseStyle} ${variants[variant]} ${extraClass}">${icon} ${text}</button>`;
-};
+function renderTabs() {
+    const tabs = [
+        { id: 'learn', label: 'Verbs' },
+        { id: 'pronunciation', label: 'Pronunciation' },
+        { id: 'builder', label: 'Create phrases' },
+        { id: 'grammar', label: 'Explanation' },
+        { id: 'sentences', label: '50+ phrases' },
+        { id: 'movie', label: 'Movie mode' },
+        { id: 'games', label: 'Games' }
+    ];
+    
+    let tabsHTML = '';
+    for (let t of tabs) {
+        let activeClass = activeTab === t.id ? 'tab-active' : 'tab-inactive';
+        tabsHTML += `
+            <button onclick="setTab('${t.id}')" class="tab-trigger ${activeClass}">
+                ${t.label}
+            </button>
+        `;
+    }
 
-// --- VISTAS ---
-
-function renderMenu() {
-  const menuItems = [
-    { id: 'learn', title: 'Aprender Verbos', icon: 'book-open', desc: 'Lista y filtros', color: 'text-blue-500' },
-    { id: 'pronunciation', title: 'Pronunciación', icon: 'mic', desc: 'Reglas de -ed', color: 'text-purple-500' },
-    { id: 'sentences', title: 'Crear Frases', icon: 'pen-tool', desc: 'Estructura paso a paso', color: 'text-emerald-500' },
-    { id: 'fillBlanks', title: 'Completar Frases', icon: 'pen-tool', desc: 'Elige el verbo correcto', color: 'text-orange-500' },
-    { id: 'classify', title: 'Clasificar Verbos', icon: 'filter', desc: 'Regulares e Irregulares', color: 'text-teal-500' },
-    { id: 'memory', title: 'Juego de Memoria', icon: 'gamepad-2', desc: 'Empareja los verbos', color: 'text-pink-500' },
-    { id: 'quiz', title: 'Quiz Rápido', icon: 'brain-circuit', desc: 'Evalúa tus conocimientos', color: 'text-red-500' },
-    { id: 'story', title: 'Modo Historia', icon: 'film', desc: 'Practica con The Book of Life', color: 'text-indigo-500' },
-    { id: 'progress', title: 'Mi Progreso', icon: 'trophy', desc: 'Estadísticas y logros', color: 'text-yellow-500' },
-  ];
-
-  let cardsHTML = menuItems.map(item => `
-    <div onclick="setView('${item.id}')" class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 cursor-pointer hover:shadow-md transition-shadow flex flex-col items-center text-center hover:-translate-y-1 card-transition border-b-4 border-b-transparent hover:border-b-indigo-500">
-      <div class="p-4 rounded-full bg-slate-50 mb-4 ${item.color}">
-        <i data-lucide="${item.icon}" class="w-8 h-8"></i>
-      </div>
-      <h2 class="text-xl font-bold mb-2">${item.title}</h2>
-      <p class="text-slate-500 text-sm">${item.desc}</p>
-    </div>
-  `).join('');
-
-  return `
-    <div class="animate-fade-in">
-      <div class="text-center mb-10">
-        <h1 class="text-3xl sm:text-4xl font-extrabold text-slate-900 mb-4">¡Domina los verbos en pasado!</h1>
-        <p class="text-lg text-slate-600 max-w-2xl mx-auto">Selecciona una actividad para empezar. Aprende las reglas, escucha la pronunciación y pon a prueba tus conocimientos.</p>
-      </div>
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-        ${cardsHTML}
-      </div>
-    </div>
-  `;
+    return `
+        <div class="mb-5 inline-flex h-auto items-center justify-start rounded-md bg-slate-100 p-1 flex-wrap w-full shadow-sm">
+            ${tabsHTML}
+        </div>
+    `;
 }
-
-// 1. APRENDER VERBOS (State)
-window.learnState = { filter: 'all', search: '' };
-window.updateLearnSearch = (val) => { window.learnState.search = val; renderApp(); };
-window.updateLearnFilter = (val) => { window.learnState.filter = val; renderApp(); };
 
 function renderLearn() {
-  const s = window.learnState;
-  const filteredVerbs = verbsData.filter(v => {
-    const matchesSearch = v.present.includes(s.search.toLowerCase()) || v.spanish.includes(s.search.toLowerCase());
-    if (!matchesSearch) return false;
-    if (s.filter === 'regular') return v.type === 'regular';
-    if (s.filter === 'irregular') return v.type === 'irregular';
-    if (s.filter === 't') return v.sound === 't';
-    if (s.filter === 'd') return v.sound === 'd';
-    if (s.filter === 'id') return v.sound === 'id';
-    return true;
-  });
+    // Filtrar los verbos según la búsqueda y la categoría
+    const filtered = verbs.filter(v => {
+        const searchText = `${v.base} ${v.past} ${v.es} ${v.sound}`.toLowerCase();
+        const matchesQuery = searchText.includes(learnQuery.toLowerCase());
+        const matchesFilter = learnFilter === "all" || v.type === learnFilter || v.sound === learnFilter;
+        return matchesQuery && matchesFilter;
+    });
 
-  const filters = [
-    { id: 'all', label: 'Todos' }, { id: 'regular', label: 'Regulares' }, { id: 'irregular', label: 'Irregulares' },
-    { id: 't', label: 'Sonido /t/' }, { id: 'd', label: 'Sonido /d/' }, { id: 'id', label: 'Sonido /id/' }
-  ];
-
-  let filterButtons = filters.map(f => `
-    <button onclick="updateLearnFilter('${f.id}')" class="px-3 py-1 rounded-full text-sm font-medium transition-colors ${s.filter === f.id ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}">
-      ${f.label}
-    </button>
-  `).join('');
-
-  let tableRows = filteredVerbs.map(v => `
-    <tr class="border-b hover:bg-slate-50 transition-colors">
-      <td class="p-4 font-semibold text-indigo-700">${v.present}</td>
-      <td class="p-4 font-medium">${v.past} ${v.type === 'regular' ? `<span class="block text-xs text-slate-400">Pron: ${v.pron}</span>` : ''}</td>
-      <td class="p-4 text-slate-600">${v.spanish}</td>
-      <td class="p-4"><span class="px-2 py-1 rounded text-xs font-bold ${v.type === 'regular' ? 'bg-emerald-100 text-emerald-800' : 'bg-orange-100 text-orange-800'}">${v.type}</span></td>
-      <td class="p-4 font-mono text-slate-500">${v.sound ? `/${v.sound}/` : '-'}</td>
-      <td class="p-4 text-center">
-        <button onclick="playAudio('${v.past}')" class="text-indigo-500 hover:text-indigo-700 p-2 rounded-full hover:bg-indigo-50">
-          <i data-lucide="volume-2" class="w-5 h-5"></i>
-        </button>
-      </td>
-    </tr>
-  `).join('');
-
-  if (filteredVerbs.length === 0) tableRows = `<tr><td colSpan="6" class="p-8 text-center text-slate-500">No se encontraron verbos.</td></tr>`;
-
-  return `
-    <div class="space-y-6 animate-fade-in">
-      <div class="flex items-center justify-between">
-        ${getButtonHTML('Menú', "setView('menu')", 'outline', '<i data-lucide="arrow-left" class="w-4 h-4"></i>')}
-        <h2 class="text-2xl font-bold">Diccionario de Verbos</h2>
-      </div>
-      <div class="bg-white p-4 rounded-xl shadow-sm flex flex-col md:flex-row gap-4 justify-between items-center">
-        <input type="text" placeholder="Buscar verbo..." class="w-full md:w-64 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" value="${s.search}" onkeyup="updateLearnSearch(this.value)">
-        <div class="flex flex-wrap gap-2 justify-center">${filterButtons}</div>
-      </div>
-      <div class="bg-white rounded-xl shadow-sm overflow-x-auto">
-        <table class="w-full text-left border-collapse">
-          <thead>
-            <tr class="bg-slate-100 text-slate-700">
-              <th class="p-4 border-b">Presente</th><th class="p-4 border-b">Pasado</th><th class="p-4 border-b">Español</th>
-              <th class="p-4 border-b">Tipo</th><th class="p-4 border-b">Sonido Final</th><th class="p-4 border-b text-center">Escuchar</th>
-            </tr>
-          </thead>
-          <tbody>${tableRows}</tbody>
-        </table>
-      </div>
-    </div>
-  `;
-}
-
-// 2. PRONUNCIACIÓN
-function renderPronunciation() {
-  const rules = [
-    { sound: '/t/', desc: 'Si el verbo en su forma base termina en un sonido SORDO (p, k, f, s, sh, ch).', examples: ['watch → watched', 'work → worked', 'help → helped'], audioWord: 'watched', color: 'bg-rose-50 border-rose-200 text-rose-800' },
-    { sound: '/d/', desc: 'Si el verbo en su forma base termina en un sonido SONORO (l, n, r, g, v, z, m) o una VOCAL.', examples: ['play → played', 'clean → cleaned', 'live → lived'], audioWord: 'played', color: 'bg-emerald-50 border-emerald-200 text-emerald-800' },
-    { sound: '/id/', desc: 'Si el verbo en su forma base termina en el sonido /t/ o /d/. ¡Es la única vez que pronuncias una sílaba extra!', examples: ['want → wanted', 'need → needed', 'visit → visited'], audioWord: 'wanted', color: 'bg-blue-50 border-blue-200 text-blue-800' }
-  ];
-
-  let rulesHTML = rules.map(rule => `
-    <div class="bg-white rounded-xl shadow-sm border-2 ${rule.color} p-6">
-      <div class="flex justify-between items-center mb-4">
-        <h3 class="text-3xl font-black">${rule.sound}</h3>
-        <button onclick="playAudio('${rule.audioWord}')" class="bg-white p-3 rounded-full shadow hover:scale-110 transition-transform">
-          <i data-lucide="volume-2" class="w-6 h-6 text-indigo-600"></i>
-        </button>
-      </div>
-      <p class="text-slate-700 mb-4 h-24">${rule.desc}</p>
-      <div class="bg-white bg-opacity-60 rounded-lg p-3">
-        <h4 class="font-bold text-sm text-slate-500 mb-2">Ejemplos:</h4>
-        <ul class="space-y-2">
-          ${rule.examples.map(ex => `
-            <li class="flex justify-between items-center font-mono font-medium text-indigo-900">
-              ${ex}
-              <button onclick="playAudio('${ex.split('→')[1].trim()}')" class="text-indigo-400 hover:text-indigo-600"><i data-lucide="play-circle" class="w-4 h-4"></i></button>
-            </li>
-          `).join('')}
-        </ul>
-      </div>
-    </div>
-  `).join('');
-
-  return `
-    <div class="space-y-6 animate-fade-in">
-      <div class="flex items-center justify-between">
-        ${getButtonHTML('Menú', "setView('menu')", 'outline', '<i data-lucide="arrow-left" class="w-4 h-4"></i>')}
-        <h2 class="text-2xl font-bold">Reglas de Pronunciación (-ed)</h2>
-      </div>
-      <div class="bg-white p-6 rounded-xl shadow-sm text-lg text-slate-700">
-        <p>Los verbos regulares en pasado terminan en <strong>-ed</strong>, pero esta terminación tiene <strong>3 pronunciaciones diferentes</strong> dependiendo del sonido final del verbo original. ¡Nunca se pronuncia como se escribe en español!</p>
-      </div>
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">${rulesHTML}</div>
-    </div>
-  `;
-}
-
-// 3. CREAR FRASES (State)
-window.sentState = { mode: 'affirmative', subject: '', verb: '', complement: '' };
-window.updateSent = (key, val) => { window.sentState[key] = val; renderApp(); };
-
-function renderSentences() {
-  const s = window.sentState;
-  const subjects = ['Manolo', 'María', 'Joaquín', 'They', 'We', 'I'];
-  const complements = ['the movie', 'a song', 'the town', 'to the bull', 'a letter'];
-  const testVerbs = verbsData.slice(0, 15);
-
-  let sentence = '';
-  let vObj = testVerbs.find(v => v.present === s.verb);
-  if (s.subject && s.verb && s.complement && vObj) {
-    if (s.mode === 'affirmative') sentence = `${s.subject} ${vObj.past} ${s.complement}.`;
-    else if (s.mode === 'negative') sentence = `${s.subject} did not ${vObj.present} ${s.complement}.`;
-    else if (s.mode === 'question') sentence = `Did ${s.subject} ${vObj.present} ${s.complement}?`;
-  }
-
-  return `
-    <div class="space-y-6 animate-fade-in">
-      <div class="flex items-center justify-between">
-        ${getButtonHTML('Menú', "setView('menu')", 'outline', '<i data-lucide="arrow-left" class="w-4 h-4"></i>')}
-        <h2 class="text-2xl font-bold">Constructor de Frases</h2>
-      </div>
-      <div class="flex gap-4 justify-center">
-        ${getButtonHTML('Afirmativa (+)', "updateSent('mode', 'affirmative')", s.mode === 'affirmative' ? 'primary' : 'outline')}
-        ${getButtonHTML('Negativa (-)', "updateSent('mode', 'negative')", s.mode === 'negative' ? 'primary' : 'outline')}
-        ${getButtonHTML('Pregunta (?)', "updateSent('mode', 'question')", s.mode === 'question' ? 'primary' : 'outline')}
-      </div>
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-          <h3 class="font-bold text-slate-500 mb-2">1. Sujeto (Subject)</h3>
-          <select class="w-full p-2 border rounded-lg" onchange="updateSent('subject', this.value)">
-            <option value="">Selecciona...</option>
-            ${subjects.map(sub => `<option value="${sub}" ${s.subject === sub ? 'selected' : ''}>${sub}</option>`).join('')}
-          </select>
-        </div>
-        <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-          <h3 class="font-bold text-slate-500 mb-2">2. Verbo (Verb)</h3>
-          <select class="w-full p-2 border rounded-lg" onchange="updateSent('verb', this.value)">
-            <option value="">Selecciona (Forma base)...</option>
-            ${testVerbs.map(v => `<option value="${v.present}" ${s.verb === v.present ? 'selected' : ''}>${v.present} (${v.spanish})</option>`).join('')}
-          </select>
-          ${s.mode === 'negative' ? `<p class="text-xs text-rose-500 mt-2 font-medium">Usamos 'did not', el verbo vuelve a su forma base.</p>` : ''}
-          ${s.mode === 'question' ? `<p class="text-xs text-rose-500 mt-2 font-medium">Usamos 'Did' al inicio, el verbo vuelve a su forma base.</p>` : ''}
-        </div>
-        <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-          <h3 class="font-bold text-slate-500 mb-2">3. Complemento</h3>
-          <select class="w-full p-2 border rounded-lg" onchange="updateSent('complement', this.value)">
-            <option value="">Selecciona...</option>
-            ${complements.map(c => `<option value="${c}" ${s.complement === c ? 'selected' : ''}>${c}</option>`).join('')}
-          </select>
-        </div>
-      </div>
-      ${sentence ? `
-        <div class="bg-indigo-50 border border-indigo-200 mt-8 p-6 rounded-xl shadow-sm">
-          <div class="flex justify-between items-center mb-4">
-            <h3 class="text-2xl sm:text-3xl font-black text-indigo-900">${sentence}</h3>
-            <button onclick="playAudio('${sentence.replace("'", "\\'")}')" class="p-3 bg-indigo-600 text-white rounded-full hover:bg-indigo-700 shadow-lg">
-              <i data-lucide="volume-2" class="w-6 h-6"></i>
-            </button>
-          </div>
-          <div class="bg-white p-4 rounded-lg">
-            <h4 class="font-bold text-slate-700 mb-2">Explicación Gramatical:</h4>
-            <ul class="list-disc pl-5 text-slate-600 space-y-1">
-              <li><strong>Sujeto:</strong> ${s.subject}</li>
-              ${s.mode === 'affirmative' ? `<li><strong>Verbo en pasado:</strong> ${vObj.past} (${vObj.type === 'regular' ? `Regular, sonido /${vObj.sound}/` : 'Irregular'})</li>` : ''}
-              ${s.mode === 'negative' ? `<li><strong>Auxiliar negativo:</strong> did not (didn't) + <strong>Verbo base:</strong> ${vObj.present}</li>` : ''}
-              ${s.mode === 'question' ? `<li><strong>Auxiliar pregunta:</strong> Did + <strong>Verbo base:</strong> ${vObj.present}</li>` : ''}
-              <li><strong>Complemento:</strong> ${s.complement}</li>
-              <li class="mt-2 text-indigo-700 font-medium"><strong>Traducción sugerida:</strong> ${
-                s.mode === 'affirmative' ? `[Sujeto] ${vObj.spanish} (en pasado) [Complemento]` :
-                s.mode === 'negative' ? `[Sujeto] no ${vObj.spanish} (en pasado) [Complemento]` :
-                `¿[Sujeto] ${vObj.spanish} (en pasado) [Complemento]?`
-              }</li>
-            </ul>
-          </div>
-        </div>
-      ` : ''}
-    </div>
-  `;
-}
-
-// 4. JUEGO DE COMPLETAR FRASES (State)
-const fbQuestions = [
-  { text: "Manolo ______ a song for María.", options: ['sing', 'sang', 'sung', 'sings'], correct: 'sang', verb: 'sing' },
-  { text: "They ______ the movie yesterday.", options: ['watch', 'watches', 'watched', 'watching'], correct: 'watched', verb: 'watch' },
-  { text: "María did not ______ the letter.", options: ['wrote', 'written', 'writes', 'write'], correct: 'write', exp: "Después de 'did not', el verbo vuelve a su forma base." },
-  { text: "______ Joaquín protect the town?", options: ['Do', 'Does', 'Did', 'Done'], correct: 'Did', exp: "Para preguntas en pasado simple usamos el auxiliar 'Did'." },
-  { text: "She ______ to Mexico last year.", options: ['go', 'goes', 'went', 'gone'], correct: 'went', verb: 'go' }
-];
-window.fbState = { currentQ: 0, selected: null, showResult: false };
-
-window.fbSelect = (opt) => {
-  if (window.fbState.showResult) return;
-  window.fbState.selected = opt;
-  window.fbState.showResult = true;
-  if (opt === fbQuestions[window.fbState.currentQ].correct) {
-    updateProgress(10);
-    playAudio('Correct');
-  } else playAudio('Try again');
-  renderApp();
-};
-window.fbNext = () => {
-  window.fbState.selected = null;
-  window.fbState.showResult = false;
-  if (window.fbState.currentQ < fbQuestions.length - 1) window.fbState.currentQ++;
-  else window.fbState.currentQ = 0;
-  renderApp();
-};
-
-function renderFillBlanks() {
-  const s = window.fbState;
-  const q = fbQuestions[s.currentQ];
-  const isCorrect = s.selected === q.correct;
-  const vObj = verbsData.find(v => v.present === q.verb);
-
-  let sentenceHTML = q.text.split('______').map((part, i, arr) => {
-    let blank = i < arr.length - 1 ? `<span class="inline-block w-24 border-b-2 mx-2 ${s.showResult ? (isCorrect ? 'border-emerald-500 text-emerald-600' : 'border-rose-500 text-rose-600') : 'border-slate-400'}">${s.selected || '______'}</span>` : '';
-    return part + blank;
-  }).join('');
-
-  let optionsHTML = q.options.map(opt => `
-    <button onclick="fbSelect('${opt}')" class="p-4 rounded-xl text-lg font-semibold transition-all shadow-sm border-2 
-      ${s.showResult && opt === q.correct ? 'bg-emerald-100 border-emerald-500 text-emerald-800' : ''}
-      ${s.showResult && s.selected === opt && opt !== q.correct ? 'bg-rose-100 border-rose-500 text-rose-800' : ''}
-      ${!s.showResult ? 'bg-white border-slate-200 hover:border-indigo-400 hover:shadow-md' : 'opacity-70 cursor-default'}
-    ">${opt}</button>
-  `).join('');
-
-  return `
-    <div class="space-y-6 animate-fade-in max-w-2xl mx-auto">
-      <div class="flex items-center justify-between">
-        ${getButtonHTML('Menú', "setView('menu')", 'outline', '<i data-lucide="arrow-left" class="w-4 h-4"></i>')}
-        <span class="font-bold text-slate-500">Pregunta ${s.currentQ + 1} / ${fbQuestions.length}</span>
-      </div>
-      <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-8 text-center">
-        <h3 class="text-2xl font-medium text-slate-800 mb-8">${sentenceHTML}</h3>
-        <div class="grid grid-cols-2 gap-4">${optionsHTML}</div>
-        ${s.showResult ? `
-          <div class="mt-8 p-4 rounded-lg text-left ${isCorrect ? 'bg-emerald-50' : 'bg-rose-50'}">
-            <div class="flex items-center gap-2 mb-2 font-bold ${isCorrect ? 'text-emerald-600' : 'text-rose-600'}">
-              <i data-lucide="${isCorrect ? 'check-circle-2' : 'x-circle'}" class="w-5 h-5"></i> ${isCorrect ? '¡Correcto!' : 'Incorrecto'}
+    let cardsHTML = '';
+    for (let verb of filtered) {
+        let badgeClass = verb.type === 'regular' ? 'badge-default' : 'badge-secondary';
+        cardsHTML += `
+            <div class="card p-4 animate-fade-in">
+                <div class="flex items-start justify-between gap-2">
+                    <div>
+                        <div class="text-xl font-bold">${verb.base}</div>
+                        <div class="text-sm text-slate-500">${verb.es}</div>
+                    </div>
+                    <div class="badge ${badgeClass}">${verb.type}</div>
+                </div>
+                <div class="mt-3 grid grid-cols-2 gap-2 text-sm">
+                    <div class="rounded-xl bg-slate-100 p-2"><b>Past:</b> ${verb.past}</div>
+                    <div class="rounded-xl bg-slate-100 p-2"><b>Participle:</b> ${verb.participle}</div>
+                    <div class="rounded-xl bg-slate-100 p-2"><b>Sound:</b> ${verb.sound}</div>
+                    <div class="rounded-xl bg-slate-100 p-2"><b>Pron:</b> ${verb.pronunciation}</div>
+                </div>
+                <button class="btn btn-outline mt-3 w-full rounded-xl" onclick="speak('${verb.base}. ${verb.past}. ${verb.participle}')">
+                    <i data-lucide="volume-2" class="mr-2 h-4 w-4"></i> Listen
+                </button>
             </div>
-            <p class="text-slate-700">
-              ${q.exp || (isCorrect ? `¡Muy bien! "${q.correct}" es la forma correcta.` : `La respuesta correcta era "${q.correct}".`)}
-              ${vObj && vObj.type === 'regular' ? ` Este verbo es regular y suena /${vObj.sound}/ al final.` : ''}
-              ${vObj && vObj.type === 'irregular' ? ` Este es un verbo irregular (presente: ${vObj.present}).` : ''}
-            </p>
-            ${getButtonHTML('Siguiente Pregunta', 'fbNext()', isCorrect ? 'success' : 'primary', '', 'w-full mt-4')}
-          </div>
-        ` : ''}
-      </div>
-    </div>
-  `;
-}
-
-// 5. CLASIFICAR VERBOS (State)
-window.classState = { verbs: [], currentIndex: 0, feedback: null };
-window.initClassify = () => {
-  window.classState.verbs = [...verbsData].sort(() => 0.5 - Math.random()).slice(0, 10);
-  window.classState.currentIndex = 0;
-  window.classState.feedback = null;
-  renderApp();
-}
-window.classifySelect = (catId) => {
-  if (window.classState.feedback !== null) return;
-  const v = window.classState.verbs[window.classState.currentIndex];
-  const isIrreg = v.type === 'irregular';
-  const isCorrect = (isIrreg && catId === 'irregular') || (!isIrreg && v.sound === catId);
-
-  window.classState.feedback = isCorrect ? 'correct' : 'incorrect';
-  renderApp();
-
-  if (isCorrect) {
-    updateProgress(5);
-    playAudio(v.past);
-    setTimeout(() => {
-      window.classState.feedback = null;
-      if (window.classState.currentIndex < window.classState.verbs.length - 1) window.classState.currentIndex++;
-      else window.classState.currentIndex = -1;
-      renderApp();
-    }, 1500);
-  } else {
-    setTimeout(() => { window.classState.feedback = null; renderApp(); }, 1000);
-  }
-};
-
-function renderClassify() {
-  if (window.classState.verbs.length === 0) window.initClassify();
-  const s = window.classState;
-
-  if (s.currentIndex === -1) return `
-    <div class="text-center animate-fade-in py-20 space-y-6">
-      <i data-lucide="trophy" class="w-16 h-16 text-yellow-400 mx-auto"></i>
-      <h2 class="text-3xl font-bold">¡Juego Completado!</h2>
-      ${getButtonHTML('Volver al Menú', "setView('menu')", 'primary', '', 'mx-auto')}
-    </div>
-  `;
-
-  const verb = s.verbs[s.currentIndex];
-  const categories = [{ id: 't', label: 'Regular /t/' }, { id: 'd', label: 'Regular /d/' }, { id: 'id', label: 'Regular /id/' }, { id: 'irregular', label: 'Irregular' }];
-
-  let catButtons = categories.map(cat => `
-    <button onclick="classifySelect('${cat.id}')" class="bg-white border-2 border-slate-200 p-6 rounded-xl text-xl font-bold text-slate-700 hover:border-indigo-500 hover:bg-indigo-50 hover:text-indigo-700 transition-colors shadow-sm">
-      ${cat.label}
-    </button>
-  `).join('');
-
-  return `
-    <div class="space-y-6 animate-fade-in max-w-2xl mx-auto">
-      <div class="flex items-center justify-between">
-        ${getButtonHTML('Menú', "setView('menu')", 'outline', '<i data-lucide="arrow-left" class="w-4 h-4"></i>')}
-        <span class="font-bold text-slate-500">Verbo ${s.currentIndex + 1} de ${s.verbs.length}</span>
-      </div>
-      <div class="text-center mb-8">
-        <p class="text-slate-500 mb-2">Clasifica el siguiente verbo en su forma de PASADO:</p>
-        <div class="text-5xl font-black text-indigo-900 py-8 bg-white rounded-xl shadow-sm border-2 border-indigo-100 flex justify-center items-center relative overflow-hidden">
-           ${verb.past}
-           <button onclick="playAudio('${verb.past}')" class="text-indigo-400 hover:text-indigo-600 absolute right-4 top-4"><i data-lucide="volume-2" class="w-6 h-6"></i></button>
-           ${s.feedback === 'correct' ? `<div class="absolute inset-0 bg-emerald-500 text-white flex items-center justify-center animate-pulse"><i data-lucide="check-circle-2" class="w-12 h-12"></i></div>` : ''}
-           ${s.feedback === 'incorrect' ? `<div class="absolute inset-0 bg-rose-500 text-white flex items-center justify-center animate-pulse"><i data-lucide="x-circle" class="w-12 h-12"></i></div>` : ''}
-        </div>
-        <p class="text-slate-400 mt-2">Forma base: ${verb.present} (${verb.spanish})</p>
-      </div>
-      <div class="grid grid-cols-2 gap-4">${catButtons}</div>
-    </div>
-  `;
-}
-
-// 6. JUEGO DE MEMORIA (State)
-window.memState = { cards: [], flipped: [], matched: [] };
-window.initMemory = () => {
-  const selected = [...verbsData].sort(() => 0.5 - Math.random()).slice(0, 6);
-  let newCards = [];
-  selected.forEach(v => {
-    const id1 = Math.random().toString(36).substr(2, 9);
-    const id2 = Math.random().toString(36).substr(2, 9);
-    newCards.push({ id: id1, text: v.present, type: 'present', matchId: id2, audio: v.present });
-    newCards.push({ id: id2, text: v.past, type: 'past', matchId: id1, audio: v.past });
-  });
-  window.memState = { cards: newCards.sort(() => 0.5 - Math.random()), flipped: [], matched: [] };
-  renderApp();
-};
-window.memClick = (id) => {
-  let s = window.memState;
-  if (s.flipped.length === 2 || s.flipped.includes(id) || s.matched.includes(id)) return;
-  
-  const card = s.cards.find(c => c.id === id);
-  playAudio(card.audio);
-  s.flipped.push(id);
-  renderApp();
-
-  if (s.flipped.length === 2) {
-    const card1 = s.cards.find(c => c.id === s.flipped[0]);
-    const card2 = s.cards.find(c => c.id === s.flipped[1]);
-    if (card1.matchId === card2.id) {
-      setTimeout(() => {
-        s.matched.push(card1.id, card2.id);
-        s.flipped = [];
-        updateProgress(15);
-        renderApp();
-      }, 1000);
-    } else {
-      setTimeout(() => { s.flipped = []; renderApp(); }, 1200);
+        `;
     }
-  }
-};
 
-function renderMemory() {
-  if (window.memState.cards.length === 0) window.initMemory();
-  const s = window.memState;
-  const isWin = s.cards.length > 0 && s.matched.length === s.cards.length;
-
-  let cardsHTML = s.cards.map(card => {
-    const isFlipped = s.flipped.includes(card.id) || s.matched.includes(card.id);
     return `
-      <div onclick="memClick('${card.id}')" class="relative w-full h-24 sm:h-32 rounded-xl cursor-pointer transform-style-3d card-transition ${isFlipped ? 'rotate-y-180' : ''}">
-        <div class="absolute inset-0 w-full h-full bg-indigo-500 rounded-xl shadow-md flex items-center justify-center backface-hidden ${isFlipped ? 'hidden' : ''}">
-          <i data-lucide="gamepad-2" class="w-8 h-8 text-indigo-300 opacity-50"></i>
-        </div>
-        <div class="absolute inset-0 w-full h-full bg-white border-2 border-indigo-200 rounded-xl shadow-md flex items-center justify-center p-2 text-center backface-hidden ${!isFlipped ? 'hidden' : ''}">
-          <span class="font-bold ${card.type === 'present' ? 'text-indigo-600' : 'text-emerald-600'} text-sm sm:text-lg">${card.text}</span>
-        </div>
-      </div>
-    `;
-  }).join('');
-
-  return `
-    <div class="space-y-6 animate-fade-in">
-      <div class="flex items-center justify-between">
-        ${getButtonHTML('Menú', "setView('menu')", 'outline', '<i data-lucide="arrow-left" class="w-4 h-4"></i>')}
-        ${getButtonHTML('Reiniciar', "initMemory()", 'outline', '<i data-lucide="refresh-cw" class="w-4 h-4"></i>')}
-      </div>
-      <div class="text-center mb-6">
-        <h2 class="text-2xl font-bold">Juego de Memoria</h2>
-        <p class="text-slate-500">Encuentra los pares: Verbo en presente ↔ Verbo en pasado</p>
-      </div>
-      ${isWin ? `
-        <div class="text-center bg-white p-10 rounded-xl shadow-sm border-2 border-emerald-200">
-           <i data-lucide="trophy" class="w-16 h-16 text-yellow-400 mx-auto mb-4 animate-bounce"></i>
-           <h3 class="text-3xl font-bold text-emerald-700 mb-4">¡Excelente memoria!</h3>
-           ${getButtonHTML('Jugar de nuevo', "initMemory()", 'primary', '', 'mx-auto')}
-        </div>
-      ` : `
-        <div class="grid grid-cols-3 sm:grid-cols-4 gap-3 sm:gap-4 max-w-3xl mx-auto perspective-1000">${cardsHTML}</div>
-      `}
-    </div>
-  `;
-}
-
-// 7. QUIZ (State)
-const quizData = [
-  { q: '¿Cuál es el pasado de "go"?', options: ['goed', 'went', 'gone', 'going'], a: 'went' },
-  { q: '¿Cómo se pronuncia la terminación -ed en "watched"?', options: ['/id/', '/d/', '/t/', 'muda'], a: '/t/' },
-  { q: '¿Es correcta esta oración? "He did not played soccer."', options: ['Sí, es correcta.', 'No, debería ser "He did not play".'], a: 'No, debería ser "He did not play".' },
-  { q: '¿Cuál verbo es regular?', options: ['buy', 'eat', 'study', 'see'], a: 'study' },
-  { q: 'Completa: Did you ______ the movie?', options: ['enjoy', 'enjoyed', 'enjoys', 'enjoying'], a: 'enjoy' }
-];
-window.quizState = { currentQ: 0, score: 0, showResult: false };
-window.quizAnswer = (opt) => {
-  if (opt === quizData[window.quizState.currentQ].a) {
-    window.quizState.score++;
-    updateProgress(20);
-  }
-  if (window.quizState.currentQ < quizData.length - 1) window.quizState.currentQ++;
-  else window.quizState.showResult = true;
-  renderApp();
-};
-
-function renderQuiz() {
-  const s = window.quizState;
-  if (s.showResult) return `
-    <div class="text-center animate-fade-in max-w-md mx-auto bg-white p-8 rounded-xl shadow-md">
-      <i data-lucide="brain-circuit" class="w-16 h-16 text-indigo-500 mx-auto mb-4"></i>
-      <h2 class="text-3xl font-bold mb-2">Quiz Terminado</h2>
-      <p class="text-xl text-slate-600 mb-6">Tu puntuación: <span class="font-bold text-indigo-600">${s.score} / ${quizData.length}</span></p>
-      ${getButtonHTML('Volver al Menú', "setView('menu')", 'primary', '', 'w-full')}
-    </div>
-  `;
-
-  let optionsHTML = quizData[s.currentQ].options.map(opt => `
-    <button onclick="quizAnswer('${opt}')" class="w-full text-left p-4 rounded-lg border-2 border-slate-200 hover:border-indigo-500 hover:bg-indigo-50 font-medium text-lg transition-colors">
-      ${opt}
-    </button>
-  `).join('');
-
-  return `
-    <div class="space-y-6 animate-fade-in max-w-2xl mx-auto">
-      <div class="flex items-center justify-between">
-        ${getButtonHTML('Menú', "setView('menu')", 'outline', '<i data-lucide="arrow-left" class="w-4 h-4"></i>')}
-        <span class="font-bold text-slate-500">Pregunta ${s.currentQ + 1} de ${quizData.length}</span>
-      </div>
-      <div class="bg-white p-8 rounded-xl shadow-sm border border-gray-100">
-        <h3 class="text-2xl font-semibold mb-8 text-slate-800">${quizData[s.currentQ].q}</h3>
-        <div class="space-y-3">${optionsHTML}</div>
-      </div>
-    </div>
-  `;
-}
-
-// 8. MODO HISTORIA (State)
-window.storyState = { activeLine: null };
-window.storyClick = (i, text) => {
-  window.storyState.activeLine = window.storyState.activeLine === i ? null : i;
-  if (window.storyState.activeLine === i) playAudio(text);
-  renderApp();
-};
-
-function renderStory() {
-  const story = [
-    { eng: "Manolo loved María.", esp: "Manolo amaba a María.", verb: "loved", base: "love", type: "regular", sound: "d" },
-    { eng: "Joaquín protected the town.", esp: "Joaquín protegió el pueblo.", verb: "protected", base: "protect", type: "regular", sound: "id" },
-    { eng: "Xibalba tricked Manolo.", esp: "Xibalba engañó a Manolo.", verb: "tricked", base: "trick", type: "regular", sound: "t" },
-    { eng: "Manolo died.", esp: "Manolo murió.", verb: "died", base: "die", type: "regular", sound: "d" },
-    { eng: "Manolo met his family.", esp: "Manolo conoció a su familia.", verb: "met", base: "meet", type: "irregular" },
-    { eng: "Manolo sang to the bull.", esp: "Manolo le cantó al toro.", verb: "sang", base: "sing", type: "irregular" }
-  ];
-
-  let linesHTML = story.map((line, i) => {
-    const isActive = window.storyState.activeLine === i;
-    return `
-      <div onclick="storyClick(${i}, '${line.eng}')" class="p-4 rounded-lg border-l-4 cursor-pointer transition-all ${isActive ? 'bg-indigo-50 border-indigo-500 shadow-sm' : 'bg-slate-50 border-slate-300 hover:bg-slate-100'}">
-        <div class="flex justify-between items-center">
-          <p class="text-lg sm:text-xl font-bold text-slate-800">${line.eng}</p>
-          <i data-lucide="volume-2" class="${isActive ? "text-indigo-600" : "text-slate-400"} w-5 h-5"></i>
-        </div>
-        ${isActive ? `
-          <div class="mt-4 pt-4 border-t border-indigo-100 text-sm sm:text-base">
-            <p class="text-slate-600 mb-2 font-medium">🇪🇸 Traducción: <span class="font-normal">${line.esp}</span></p>
-            <div class="bg-white p-3 rounded border text-slate-700">
-              <span class="font-bold text-indigo-700">${line.verb}</span> es el pasado de <strong>${line.base}</strong>.<br/>
-              Es un verbo <span class="font-semibold">${line.type}</span>
-              ${line.type === 'regular' ? `, y su terminación -ed suena como <strong>/${line.sound}/</strong>.` : ''}
+        <div class="animate-fade-in">
+            <div class="mb-4 grid gap-3 md:grid-cols-[1fr_auto]">
+                <input 
+                    class="input" 
+                    placeholder="Buscar verbo, español o pronunciación..." 
+                    value="${learnQuery}" 
+                    onkeyup="setLearnQuery(this.value)" 
+                />
+                <select class="input w-auto rounded-xl" onchange="setLearnFilter(this.value)">
+                    <option value="all" ${learnFilter === 'all' ? 'selected' : ''}>Todos</option>
+                    <option value="regular" ${learnFilter === 'regular' ? 'selected' : ''}>Regulares</option>
+                    <option value="irregular" ${learnFilter === 'irregular' ? 'selected' : ''}>Irregulares</option>
+                    <option value="/t/" ${learnFilter === '/t/' ? 'selected' : ''}>/t/</option>
+                    <option value="/d/" ${learnFilter === '/d/' ? 'selected' : ''}>/d/</option>
+                    <option value="/id/" ${learnFilter === '/id/' ? 'selected' : ''}>/id/</option>
+                </select>
             </div>
-          </div>
-        ` : ''}
-      </div>
+            <div class="mb-3 text-sm text-slate-600">
+                Mostrando ${filtered.length} verbos.
+            </div>
+            <div class="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+                ${cardsHTML}
+            </div>
+        </div>
     `;
-  }).join('');
-
-  return `
-    <div class="space-y-6 animate-fade-in max-w-3xl mx-auto">
-      <div class="flex items-center justify-between">
-        ${getButtonHTML('Menú', "setView('menu')", 'outline', '<i data-lucide="arrow-left" class="w-4 h-4"></i>')}
-        <h2 class="text-2xl font-bold flex items-center gap-2"><i data-lucide="film" class="w-6 h-6 text-indigo-500"></i> The Book of Life</h2>
-      </div>
-      <div class="bg-white p-6 rounded-xl shadow-sm space-y-4">
-        <p class="text-slate-500 mb-4">Lee la historia. Haz clic en cada frase para escucharla y ver la explicación del verbo.</p>
-        ${linesHTML}
-      </div>
-    </div>
-  `;
 }
 
-// 9. PROGRESO
-function renderProgress() {
-  const level = progress.points < 100 ? 'Principiante' : progress.points < 300 ? 'Intermedio' : 'Experto';
-  const progressPercent = Math.min((progress.points % 100), 100);
+function renderPronunciation() {
+    const groups = [
+        { 
+            sound: "/t/", 
+            title: "Sonido /t/", 
+            rule: "Se usa cuando el verbo termina en sonido sordo: k, p, sh, ch, f, s, x.", 
+            examples: verbs.filter(v => v.sound === "/t/") 
+        },
+        { 
+            sound: "/d/", 
+            title: "Sonido /d/", 
+            rule: "Se usa cuando el verbo termina en sonido sonoro: vocal, l, n, r, v, z, m, g, y.", 
+            examples: verbs.filter(v => v.sound === "/d/") 
+        },
+        { 
+            sound: "/id/", 
+            title: "Sonido /id/", 
+            rule: "Se usa cuando el verbo termina en sonido /t/ o /d/.", 
+            examples: verbs.filter(v => v.sound === "/id/") 
+        },
+        { 
+            sound: "irregular", 
+            title: "Irregulares", 
+            rule: "No siguen la regla -ed. Hay que aprender pasado y participio por memoria y uso.", 
+            examples: verbs.filter(v => v.type === "irregular") 
+        }
+    ];
 
-  return `
-    <div class="space-y-6 animate-fade-in max-w-2xl mx-auto">
-      <div class="flex items-center justify-between">
-        ${getButtonHTML('Menú', "setView('menu')", 'outline', '<i data-lucide="arrow-left" class="w-4 h-4"></i>')}
-        <h2 class="text-2xl font-bold text-slate-800">Mi Progreso</h2>
-      </div>
-      <div class="text-center p-8 bg-gradient-to-br from-indigo-500 to-purple-600 text-white rounded-xl shadow-sm">
-        <i data-lucide="trophy" class="w-20 h-20 mx-auto text-yellow-300 mb-4 drop-shadow-md"></i>
-        <h3 class="text-3xl font-black mb-2">${progress.points} Puntos Totales</h3>
-        <p class="text-indigo-100 text-lg">Nivel Actual: <span class="font-bold">${level}</span></p>
-        <div class="mt-8 bg-white/20 rounded-full h-4 overflow-hidden relative">
-          <div class="bg-yellow-400 h-full transition-all duration-1000" style="width: ${progressPercent}%"></div>
+    let groupsHTML = '';
+    for (let g of groups) {
+        let examplesHTML = '';
+        for (let v of g.examples) {
+            let safeText = v.past.replace(/'/g, "\\'");
+            examplesHTML += `
+                <button class="btn btn-outline rounded-full text-xs py-1" onclick="speak('${safeText}')">
+                    ${v.past} <i data-lucide="volume-2" class="ml-2 h-3 w-3"></i>
+                </button>
+            `;
+        }
+        
+        groupsHTML += `
+            <div class="card p-4 animate-fade-in">
+                <h2 class="text-xl font-bold">${g.title}</h2>
+                <p class="mt-1 text-sm text-slate-600">${g.rule}</p>
+                <div class="mt-3 flex flex-wrap gap-2">
+                    ${examplesHTML}
+                </div>
+            </div>
+        `;
+    }
+
+    return `
+        <div class="grid gap-4 animate-fade-in">
+            ${groupsHTML}
         </div>
-        <p class="text-xs text-indigo-200 mt-2 text-right">${progressPercent}/100 para el próximo nivel</p>
-      </div>
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex items-center gap-4">
-          <div class="p-3 bg-emerald-100 text-emerald-600 rounded-full"><i data-lucide="brain-circuit" class="w-6 h-6"></i></div>
-          <div>
-            <p class="text-sm text-slate-500 font-bold">Actividades Completadas</p>
-            <p class="text-2xl font-black text-slate-800">${Math.floor(progress.points / 15)}</p>
-          </div>
-        </div>
-        <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex items-center gap-4">
-          <div class="p-3 bg-orange-100 text-orange-600 rounded-full"><i data-lucide="book-open" class="w-6 h-6"></i></div>
-          <div>
-            <p class="text-sm text-slate-500 font-bold">Verbos en la base</p>
-            <p class="text-2xl font-black text-slate-800">${verbsData.length}</p>
-          </div>
-        </div>
-      </div>
-      <p class="text-center text-slate-400 text-sm mt-8">El progreso se guarda automáticamente en tu navegador.</p>
-    </div>
-  `;
+    `;
 }
 
-// --- RENDERIZADO PRINCIPAL ---
+function renderBuilder() {
+    const s = builderState;
+    const v = findVerb(s.verbName) || verbs[0];
+    
+    let sentence = "";
+    let explanation = "";
+    
+    if (s.mode === "affirmative") {
+        sentence = `${s.subject} ${v.past} ${s.complement}.`;
+        explanation = `Afirmativa en pasado: Subject + verb in past + complement. Usamos "${v.past}" porque la acción ya ocurrió.`;
+    } else if (s.mode === "negative") {
+        sentence = `${s.subject} did not ${v.base} ${s.complement}.`;
+        explanation = `Negativa en pasado: Subject + did not + verb in base form + complement. Después de did not, no se usa el pasado: no es "did not ${v.past}", es "did not ${v.base}".`;
+    } else {
+        sentence = `Did ${s.subject} ${v.base} ${s.complement}?`;
+        explanation = `Pregunta en pasado: Did + subject + verb in base form + complement? Después de Did, el verbo vuelve a base: "${v.base}".`;
+    }
+
+    let optionsHTML = '';
+    for (let verb of verbs) {
+        let isSelected = s.verbName === verb.base ? 'selected' : '';
+        optionsHTML += `
+            <option value="${verb.base}" ${isSelected}>
+                ${verb.base} → ${verb.past}
+            </option>
+        `;
+    }
+
+    let safeSentenceText = sentence.replace(/'/g, "\\'");
+
+    return `
+        <div class="card p-5 animate-fade-in">
+            <h2 class="mb-3 flex items-center text-xl font-bold">
+                <i data-lucide="pencil-line" class="mr-2 h-5 w-5"></i> Create sentences
+            </h2>
+            <div class="grid gap-3 md:grid-cols-4">
+                <input 
+                    class="input" 
+                    value="${s.subject}" 
+                    onkeyup="updateBuilder('subject', this.value)" 
+                    placeholder="Subject" 
+                />
+                <select class="input" onchange="updateBuilder('verbName', this.value)">
+                    ${optionsHTML}
+                </select>
+                <input 
+                    class="input" 
+                    value="${s.complement}" 
+                    onkeyup="updateBuilder('complement', this.value)" 
+                    placeholder="Complement" 
+                />
+                <select class="input" onchange="updateBuilder('mode', this.value)">
+                    <option value="affirmative" ${s.mode === 'affirmative' ? 'selected' : ''}>Affirmative</option>
+                    <option value="negative" ${s.mode === 'negative' ? 'selected' : ''}>Negative</option>
+                    <option value="question" ${s.mode === 'question' ? 'selected' : ''}>Question</option>
+                </select>
+            </div>
+            
+            <div class="mt-5 rounded-2xl bg-slate-100 p-4 text-2xl font-bold">
+                ${sentence}
+            </div>
+            
+            <div class="mt-3 rounded-2xl border p-4 text-sm text-slate-700">
+                <b>Explanation:</b> ${explanation}<br/>
+                <b>Verb:</b> ${v.base} → ${v.past}. <b>Pronunciation:</b> ${v.pronunciation}. <b>Sound:</b> ${v.sound}.
+            </div>
+            
+            <button class="btn btn-outline mt-4 rounded-xl" onclick="speak('${safeSentenceText}')">
+                <i data-lucide="volume-2" class="mr-2 h-4 w-4"></i> Listen sentence
+            </button>
+        </div>
+    `;
+}
+
+function renderGrammar() {
+    return `
+        <div class="grid gap-4 animate-fade-in">
+            <div class="card p-5">
+                <h2 class="flex items-center text-xl font-bold">
+                    <i data-lucide="book-open" class="mr-2 h-5 w-5"></i> How to write sentences in Simple Past
+                </h2>
+                <div class="mt-4 grid gap-3 md:grid-cols-3">
+                    <div class="rounded-2xl bg-slate-100 p-4">
+                        <b>Affirmative</b>
+                        <p>Subject + verb in past + complement.</p>
+                        <p class="mt-2 font-semibold">Manolo loved María.</p>
+                    </div>
+                    <div class="rounded-2xl bg-slate-100 p-4">
+                        <b>Negative</b>
+                        <p>Subject + did not + base verb + complement.</p>
+                        <p class="mt-2 font-semibold">Manolo did not kill the bull.</p>
+                    </div>
+                    <div class="rounded-2xl bg-slate-100 p-4">
+                        <b>Question</b>
+                        <p>Did + subject + base verb + complement?</p>
+                        <p class="mt-2 font-semibold">Did Manolo save the town?</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card p-5">
+                <h3 class="text-lg font-bold">Important rules</h3>
+                <p class="mt-2 text-sm text-slate-700">1. En afirmativa sí usamos el verbo en pasado: <b>Manolo saved the town.</b></p>
+                <p class="text-sm text-slate-700">2. En negativa usamos <b>did not</b> y el verbo vuelve a base: <b>did not save</b>, no <b>did not saved</b>.</p>
+                <p class="text-sm text-slate-700">3. En pregunta usamos <b>Did</b> y el verbo vuelve a base: <b>Did Manolo save the town?</b></p>
+                <p class="text-sm text-slate-700">4. Verbos regulares terminan en -ed, pero su pronunciación puede ser /t/, /d/ o /id/.</p>
+                <p class="text-sm text-slate-700">5. Verbos irregulares no siguen -ed: go → went, sing → sang, see → saw.</p>
+            </div>
+        </div>
+    `;
+}
+
+function renderLibrary() {
+    let cardsHTML = '';
+    
+    for (let i = 0; i < practiceSentences.length; i++) {
+        let s = practiceSentences[i];
+        let info = getVerbInfo(s);
+        let safeText = `${s.present.replace(/'/g, "\\'")}. ${s.past.replace(/'/g, "\\'")}`;
+        
+        cardsHTML += `
+            <div class="card p-4 animate-fade-in">
+                <div class="badge badge-default mb-2">#${i + 1}</div>
+                <p><b>Present:</b> ${s.present}</p>
+                <p><b>Past:</b> ${s.past}</p>
+                <p><b>Spanish:</b> ${s.es}</p>
+                <p class="mt-2 text-sm text-slate-600">
+                    <b>Verb:</b> ${s.verb} → ${info.past} | <b>Pron:</b> ${info.pronunciation} | <b>Sound:</b> ${info.sound}
+                </p>
+                <button class="btn btn-outline mt-3 rounded-xl" onclick="speak('${safeText}')">
+                    <i data-lucide="volume-2" class="mr-2 h-4 w-4"></i> Listen
+                </button>
+            </div>
+        `;
+    }
+
+    return `
+        <div class="grid gap-3 animate-fade-in">
+            <div class="card p-5">
+                <h2 class="text-xl font-bold">50+ sentences: Present and Past</h2>
+                <p class="mt-2 text-sm text-slate-600">Cada frase muestra presente, pasado, traducción, verbo y pronunciación.</p>
+            </div>
+            <div class="grid gap-3 md:grid-cols-2">
+                ${cardsHTML}
+            </div>
+        </div>
+    `;
+}
+
+function renderMovieMode() {
+    let cardsHTML = '';
+    
+    for (let i = 0; i < movieSentences.length; i++) {
+        let s = movieSentences[i];
+        let info = getVerbInfo(s);
+        let safeText = s.past.replace(/'/g, "\\'");
+        
+        cardsHTML += `
+            <div class="card p-4 animate-fade-in">
+                <div class="text-sm text-slate-500">Present</div>
+                <div class="font-semibold">${s.present}</div>
+                <div class="mt-2 text-sm text-slate-500">Past</div>
+                <div class="text-lg font-bold">${s.past}</div>
+                <div class="mt-2 text-sm">${s.es}</div>
+                <div class="mt-2 rounded-xl bg-slate-100 p-2 text-sm">
+                    <b>Verb:</b> ${s.verb} → ${info.past}<br/>
+                    <b>Pron:</b> ${info.pronunciation}<br/>
+                    <b>Sound:</b> ${info.sound}
+                </div>
+                <button class="btn btn-outline mt-3 w-full rounded-xl" onclick="speak('${safeText}')">
+                    <i data-lucide="volume-2" class="mr-2 h-4 w-4"></i> Listen
+                </button>
+            </div>
+        `;
+    }
+
+    return `
+        <div class="grid gap-3 animate-fade-in">
+            <div class="card p-5">
+                <h2 class="flex items-center text-xl font-bold">
+                    <i data-lucide="film" class="mr-2 h-5 w-5"></i> Practice with The Book of Life
+                </h2>
+                <p class="mt-2 text-sm text-slate-600">Frases cortas para practicar el speaking con acciones claras en pasado.</p>
+            </div>
+            <div class="grid gap-3 md:grid-cols-2">
+                ${cardsHTML}
+            </div>
+        </div>
+    `;
+}
+
+function renderGames() {
+    // Inicializar juegos si no están iniciados
+    initFillGame();
+    initClassGame();
+    initQuiz();
+
+    // ==========================================
+    // Game 1: Fill the blanks
+    // ==========================================
+    const fItem = gameState.fillItem;
+    const fInfo = getVerbInfo(fItem);
+    const correctPastTarget = fInfo.past || fItem.custom?.past;
+    
+    // Crear el espacio en blanco de forma segura
+    const regex = new RegExp(`\\b${correctPastTarget.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, "i");
+    const fBlank = fItem.past.replace(regex, "______");
+    
+    let fillStatusHTML = '';
+    if (gameState.fillStatus) {
+        let isOk = gameState.fillStatus === 'ok';
+        let bgClass = isOk ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800';
+        let iconName = isOk ? 'check-circle-2' : 'x-circle';
+        let messageText = isOk ? "Correct!" : `Try again. Correct answer: ${fInfo.past}`;
+        
+        fillStatusHTML = `
+            <div class="mt-4 rounded-2xl p-4 ${bgClass}">
+                <i data-lucide="${iconName}" class="inline h-5 w-5"></i>
+                ${messageText}<br/>
+                Pronunciation: <b>${fInfo.pronunciation}</b> | Sound: <b>${fInfo.sound}</b><br/>
+                Spanish: ${fItem.es}
+            </div>
+        `;
+    }
+    
+    const safeFillAudio = fItem.past.replace(/'/g, "\\'");
+    
+    const fillHTML = `
+        <div class="card p-5">
+            <h2 class="mb-3 flex items-center text-xl font-bold">
+                <i data-lucide="gamepad-2" class="mr-2 h-5 w-5"></i> Game 1: Complete the sentence
+            </h2>
+            <p class="text-sm text-slate-600">Escribe el verbo correcto en pasado.</p>
+            
+            <div class="mt-4 rounded-2xl bg-slate-100 p-4 text-xl font-bold">${fBlank}</div>
+            <div class="mt-2 text-sm text-slate-500">Present: ${fItem.present}</div>
+            
+            <div class="mt-4 flex gap-2">
+                <input 
+                    class="input" 
+                    value="${gameState.fillAnswer}" 
+                    onkeyup="setFillAnswer(this.value); if(event.key === 'Enter') checkFillGame();" 
+                    placeholder="Past verb..." 
+                />
+                <button class="btn btn-primary" onclick="checkFillGame()">Check</button>
+                <button class="btn btn-outline" onclick="nextFillGame()">
+                    <i data-lucide="shuffle" class="h-4 w-4"></i>
+                </button>
+            </div>
+            
+            ${fillStatusHTML}
+            
+            <button class="btn btn-outline mt-4 rounded-xl w-full" onclick="speak('${safeFillAudio}')">
+                <i data-lucide="volume-2" class="mr-2 h-4 w-4"></i> Listen answer
+            </button>
+        </div>
+    `;
+
+    // ==========================================
+    // Game 2: Classification
+    // ==========================================
+    const cItem = gameState.classItem;
+    
+    let classResultHTML = '';
+    if (gameState.classResult) {
+        let isOk = gameState.classResult === 'ok';
+        let bgClass = isOk ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800';
+        let messageText = isOk ? "Correct." : `Nope. It is ${cItem.sound}.`;
+        
+        classResultHTML = `
+            <div class="mt-4 rounded-2xl p-4 ${bgClass}">
+                ${messageText} Pronunciation: <b>${cItem.pronunciation}</b>
+            </div>
+        `;
+    }
+    
+    const sounds = ["/t/", "/d/", "/id/", "irregular"];
+    let soundButtonsHTML = '';
+    for (let s of sounds) {
+        soundButtonsHTML += `
+            <button class="btn btn-outline rounded-xl" onclick="pickClassGame('${s}')">
+                ${s}
+            </button>
+        `;
+    }
+    
+    const safeClassAudio = cItem.past.replace(/'/g, "\\'");
+    
+    const classHTML = `
+        <div class="card p-5">
+            <h2 class="mb-3 flex items-center text-xl font-bold">
+                <i data-lucide="shuffle" class="mr-2 h-5 w-5"></i> Game 2: Classify the verb
+            </h2>
+            
+            <div class="rounded-2xl bg-slate-100 p-5 text-center">
+                <div class="text-4xl font-bold">${cItem.past}</div>
+                <div class="mt-1 text-sm text-slate-500">${cItem.base} | ${cItem.es}</div>
+            </div>
+            
+            <div class="mt-4 grid grid-cols-2 gap-2 md:grid-cols-4">
+                ${soundButtonsHTML}
+            </div>
+            
+            ${classResultHTML}
+            
+            <div class="mt-4 flex gap-2">
+                <button class="btn btn-primary flex-1" onclick="speak('${safeClassAudio}')">
+                    <i data-lucide="volume-2" class="mr-2 h-4 w-4"></i> Listen
+                </button>
+                <button class="btn btn-outline flex-1" onclick="nextClassGame()">Next</button>
+            </div>
+        </div>
+    `;
+
+    // ==========================================
+    // Game 3: Multiple choice quiz
+    // ==========================================
+    const qItem = gameState.quizItem;
+    
+    let quizResultHTML = '';
+    if (gameState.quizChoice) {
+        let isOk = gameState.quizChoice === qItem.past;
+        let bgClass = isOk ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800';
+        let messageText = isOk ? "Correct." : `Incorrect. Correct answer: ${qItem.past}`;
+        
+        quizResultHTML = `
+            <div class="mt-4 rounded-2xl p-4 ${bgClass}">
+                ${messageText}<br/>
+                Pronunciation: <b>${qItem.pronunciation}</b><br/>
+                Spanish: ${qItem.es}
+            </div>
+        `;
+    }
+    
+    let quizOptionsHTML = '';
+    for (let opt of gameState.quizOptions) {
+        let safeOpt = opt.replace(/'/g, "\\'");
+        quizOptionsHTML += `
+            <button class="btn btn-outline rounded-xl" onclick="pickQuiz('${safeOpt}')">
+                ${opt}
+            </button>
+        `;
+    }
+    
+    const safeQuizAudio = qItem.past.replace(/'/g, "\\'");
+    
+    const quizHTML = `
+        <div class="card p-5">
+            <h2 class="text-xl font-bold">Game 3: Multiple choice quiz</h2>
+            <p class="mt-2 text-sm text-slate-600">What is the past of <b>${qItem.base}</b>?</p>
+            
+            <div class="mt-4 grid gap-2 md:grid-cols-2">
+                ${quizOptionsHTML}
+            </div>
+            
+            ${quizResultHTML}
+            
+            <div class="mt-4 flex gap-2">
+                <button class="btn btn-primary flex-1" onclick="speak('${safeQuizAudio}')">
+                    <i data-lucide="volume-2" class="mr-2 h-4 w-4"></i> Listen
+                </button>
+                <button class="btn btn-outline flex-1" onclick="nextQuiz()">Next</button>
+            </div>
+        </div>
+    `;
+
+    // Envolver los tres juegos en la grilla principal
+    return `
+        <div class="grid gap-4 lg:grid-cols-2 animate-fade-in">
+            ${fillHTML}
+            ${classHTML}
+            ${quizHTML}
+        </div>
+    `;
+}
+
+// ==========================================
+// 6. MOTOR PRINCIPAL DE RENDERIZADO
+// ==========================================
+
 function renderApp() {
-  const appContainer = document.getElementById('app');
-  let viewHTML = '';
+    const appContainer = document.getElementById('app');
+    
+    let activeContent = '';
+    
+    // Determinar qué contenido renderizar según la pestaña activa
+    if (activeTab === 'learn') {
+        activeContent = renderLearn();
+    } else if (activeTab === 'pronunciation') {
+        activeContent = renderPronunciation();
+    } else if (activeTab === 'builder') {
+        activeContent = renderBuilder();
+    } else if (activeTab === 'grammar') {
+        activeContent = renderGrammar();
+    } else if (activeTab === 'sentences') {
+        activeContent = renderLibrary();
+    } else if (activeTab === 'movie') {
+        activeContent = renderMovieMode();
+    } else if (activeTab === 'games') {
+        activeContent = renderGames();
+    }
 
-  switch (currentView) {
-    case 'menu': viewHTML = renderMenu(); break;
-    case 'learn': viewHTML = renderLearn(); break;
-    case 'pronunciation': viewHTML = renderPronunciation(); break;
-    case 'sentences': viewHTML = renderSentences(); break;
-    case 'fillBlanks': viewHTML = renderFillBlanks(); break;
-    case 'classify': viewHTML = renderClassify(); break;
-    case 'memory': viewHTML = renderMemory(); break;
-    case 'quiz': viewHTML = renderQuiz(); break;
-    case 'story': viewHTML = renderStory(); break;
-    case 'progress': viewHTML = renderProgress(); break;
-    default: viewHTML = renderMenu(); break;
-  }
-
-  appContainer.innerHTML = `
-    <header class="bg-indigo-600 text-white p-4 shadow-md sticky top-0 z-10">
-      <div class="max-w-5xl mx-auto flex justify-between items-center">
-        <div class="flex items-center gap-2 font-bold text-xl cursor-pointer" onclick="setView('menu')">
-          <i data-lucide="book-open" class="w-6 h-6"></i>
-          <span>VerbMaster English II</span>
+    // Inyectar el HTML en el contenedor principal
+    appContainer.innerHTML = `
+        <div class="min-h-screen bg-slate-50 p-4 text-slate-900 md:p-8">
+            <div class="mx-auto max-w-7xl">
+                ${renderHeader()}
+                ${renderTabs()}
+                ${activeContent}
+            </div>
         </div>
-        <div class="flex items-center gap-2 bg-indigo-800 px-3 py-1 rounded-full text-sm font-medium">
-          <i data-lucide="trophy" class="w-4 h-4 text-yellow-400"></i>
-          <span id="header-points">${progress.points} pts</span>
-        </div>
-      </div>
-    </header>
-    <main class="max-w-5xl mx-auto p-4 sm:p-6 pb-20" id="main-content">
-      ${viewHTML}
-    </main>
-  `;
+    `;
 
-  // Inicializar iconos de Lucide
-  lucide.createIcons();
+    // Renderizar iconos de Lucide cada vez que el DOM cambia
+    lucide.createIcons();
 }
 
-// Inicializar la aplicación al cargar la página
-window.onload = renderApp;
+// Iniciar aplicación cuando la página cargue completamente
+window.onload = () => {
+    renderApp();
+};
 
 </script>
 </body>
