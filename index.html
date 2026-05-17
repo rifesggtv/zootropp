@@ -1,11 +1,33 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { 
-  BookOpen, Mic, PenTool, Gamepad2, BrainCircuit, 
-  Film, Trophy, Volume2, ArrowLeft, CheckCircle2, 
-  XCircle, Filter, PlayCircle, RefreshCw
-} from 'lucide-react';
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VerbMaster English II</title>
+    <!-- Tailwind CSS para el diseño -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons para los iconos -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        /* Animaciones y estilos 3D para las tarjetas */
+        .animate-fade-in { animation: fadeIn 0.4s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        .perspective-1000 { perspective: 1000px; }
+        .transform-style-3d { transform-style: preserve-3d; }
+        .backface-hidden { backface-visibility: hidden; }
+        .rotate-y-180 { transform: rotateY(180deg); }
+        
+        /* Transiciones suaves */
+        .card-transition { transition: all 0.3s ease; }
+    </style>
+</head>
+<body class="min-h-screen bg-slate-50 text-slate-800 font-sans">
 
-// --- DATA ---
+    <div id="app"></div>
+
+<script>
+// --- DATOS ---
 const verbsData = [
   { present: 'accept', past: 'accepted', participle: 'accepted', spanish: 'aceptar', type: 'regular', sound: 'id', pron: 'akséptid' },
   { present: 'add', past: 'added', participle: 'added', spanish: 'agregar', type: 'regular', sound: 'id', pron: 'ádid' },
@@ -91,22 +113,42 @@ const verbsData = [
   { present: 'write', past: 'wrote', participle: 'written', spanish: 'escribir', type: 'irregular', sound: null, pron: 'rout' }
 ];
 
-// --- HELPERS ---
-const playAudio = (text) => {
+// --- ESTADO GLOBAL ---
+let currentView = 'menu';
+let progress = { points: 0, learnedVerbs: [], quizzesPassed: 0 };
+
+// --- UTILIDADES ---
+window.playAudio = (text) => {
   if ('speechSynthesis' in window) {
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = 'en-US';
-    utterance.rate = 0.9; // Un poco más lento para estudiantes
+    utterance.rate = 0.9;
     window.speechSynthesis.speak(utterance);
   } else {
     alert("Tu navegador no soporta reproducción de voz.");
   }
 };
 
-// --- COMPONENTS ---
+window.setView = (view) => {
+  currentView = view;
+  renderApp();
+};
 
-const Button = ({ children, onClick, variant = 'primary', className = '' }) => {
-  const baseStyle = "px-4 py-2 rounded-lg font-semibold transition-all duration-200 flex items-center justify-center gap-2";
+window.updateProgress = (newPoints) => {
+  progress.points += newPoints;
+  localStorage.setItem('verbMasterProgress', JSON.stringify(progress));
+  document.getElementById('header-points').innerText = `${progress.points} pts`;
+};
+
+// Cargar progreso al iniciar
+const saved = localStorage.getItem('verbMasterProgress');
+if (saved) {
+  progress = JSON.parse(saved);
+}
+
+// Generador de Botones
+const getButtonHTML = (text, onClick, variant = 'primary', icon = '', extraClass = '') => {
+  const baseStyle = "px-4 py-2 rounded-lg font-semibold transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer";
   const variants = {
     primary: "bg-indigo-600 text-white hover:bg-indigo-700 shadow-md",
     secondary: "bg-white text-indigo-600 border-2 border-indigo-200 hover:border-indigo-600",
@@ -114,736 +156,533 @@ const Button = ({ children, onClick, variant = 'primary', className = '' }) => {
     danger: "bg-rose-500 text-white hover:bg-rose-600 shadow-md",
     success: "bg-emerald-500 text-white hover:bg-emerald-600 shadow-md",
   };
-  return (
-    <button onClick={onClick} className={`${baseStyle} ${variants[variant]} ${className}`}>
-      {children}
-    </button>
-  );
+  return `<button onclick="${onClick}" class="${baseStyle} ${variants[variant]} ${extraClass}">${icon} ${text}</button>`;
 };
 
-const Card = ({ children, className = '', onClick }) => (
-  <div 
-    onClick={onClick}
-    className={`bg-white rounded-xl shadow-sm border border-gray-100 p-6 ${onClick ? 'cursor-pointer hover:shadow-md transition-shadow' : ''} ${className}`}
-  >
-    {children}
-  </div>
-);
+// --- VISTAS ---
 
-// --- MAIN APP COMPONENT ---
-export default function App() {
-  const [currentView, setCurrentView] = useState('menu');
-  const [progress, setProgress] = useState({
-    points: 0,
-    learnedVerbs: [],
-    quizzesPassed: 0
-  });
-
-  // Load progress
-  useEffect(() => {
-    const saved = localStorage.getItem('verbMasterProgress');
-    if (saved) setProgress(JSON.parse(saved));
-  }, []);
-
-  // Save progress
-  const updateProgress = (newPoints) => {
-    const updated = { ...progress, points: progress.points + newPoints };
-    setProgress(updated);
-    localStorage.setItem('verbMasterProgress', JSON.stringify(updated));
-  };
-
-  const renderView = () => {
-    switch (currentView) {
-      case 'menu': return <MainMenu setView={setCurrentView} progress={progress} />;
-      case 'learn': return <LearnVerbs setView={setCurrentView} />;
-      case 'pronunciation': return <Pronunciation setView={setCurrentView} />;
-      case 'sentences': return <CreateSentences setView={setCurrentView} />;
-      case 'fillBlanks': return <FillBlanks setView={setCurrentView} updateProgress={updateProgress} />;
-      case 'classify': return <ClassifyGame setView={setCurrentView} updateProgress={updateProgress} />;
-      case 'memory': return <MemoryGame setView={setCurrentView} updateProgress={updateProgress} />;
-      case 'quiz': return <Quiz setView={setCurrentView} updateProgress={updateProgress} />;
-      case 'story': return <StoryMode setView={setCurrentView} />;
-      case 'progress': return <ProgressView setView={setCurrentView} progress={progress} />;
-      default: return <MainMenu setView={setCurrentView} progress={progress} />;
-    }
-  };
-
-  return (
-    <div className="min-h-screen bg-slate-50 text-slate-800 font-sans">
-      <header className="bg-indigo-600 text-white p-4 shadow-md sticky top-0 z-10">
-        <div className="max-w-5xl mx-auto flex justify-between items-center">
-          <div className="flex items-center gap-2 font-bold text-xl cursor-pointer" onClick={() => setCurrentView('menu')}>
-            <BookOpen size={24} />
-            <span>VerbMaster English II</span>
-          </div>
-          <div className="flex items-center gap-2 bg-indigo-800 px-3 py-1 rounded-full text-sm font-medium">
-            <Trophy size={16} className="text-yellow-400" />
-            <span>{progress.points} pts</span>
-          </div>
-        </div>
-      </header>
-      <main className="max-w-5xl mx-auto p-4 sm:p-6 pb-20">
-        {renderView()}
-      </main>
-    </div>
-  );
-}
-
-// --- SUB-COMPONENTS ---
-
-function MainMenu({ setView }) {
+function renderMenu() {
   const menuItems = [
-    { id: 'learn', title: 'Aprender Verbos', icon: <BookOpen size={32} />, desc: 'Lista y filtros', color: 'text-blue-500' },
-    { id: 'pronunciation', title: 'Pronunciación', icon: <Mic size={32} />, desc: 'Reglas de -ed', color: 'text-purple-500' },
-    { id: 'sentences', title: 'Crear Frases', icon: <PenTool size={32} />, desc: 'Estructura paso a paso', color: 'text-emerald-500' },
-    { id: 'fillBlanks', title: 'Completar Frases', icon: <PenTool size={32} />, desc: 'Elige el verbo correcto', color: 'text-orange-500' },
-    { id: 'classify', title: 'Clasificar Verbos', icon: <Filter size={32} />, desc: 'Regulares e Irregulares', color: 'text-teal-500' },
-    { id: 'memory', title: 'Juego de Memoria', icon: <Gamepad2 size={32} />, desc: 'Empareja los verbos', color: 'text-pink-500' },
-    { id: 'quiz', title: 'Quiz Rápido', icon: <BrainCircuit size={32} />, desc: 'Evalúa tus conocimientos', color: 'text-red-500' },
-    { id: 'story', title: 'Modo Historia', icon: <Film size={32} />, desc: 'Practica con The Book of Life', color: 'text-indigo-500' },
-    { id: 'progress', title: 'Mi Progreso', icon: <Trophy size={32} />, desc: 'Estadísticas y logros', color: 'text-yellow-500' },
+    { id: 'learn', title: 'Aprender Verbos', icon: 'book-open', desc: 'Lista y filtros', color: 'text-blue-500' },
+    { id: 'pronunciation', title: 'Pronunciación', icon: 'mic', desc: 'Reglas de -ed', color: 'text-purple-500' },
+    { id: 'sentences', title: 'Crear Frases', icon: 'pen-tool', desc: 'Estructura paso a paso', color: 'text-emerald-500' },
+    { id: 'fillBlanks', title: 'Completar Frases', icon: 'pen-tool', desc: 'Elige el verbo correcto', color: 'text-orange-500' },
+    { id: 'classify', title: 'Clasificar Verbos', icon: 'filter', desc: 'Regulares e Irregulares', color: 'text-teal-500' },
+    { id: 'memory', title: 'Juego de Memoria', icon: 'gamepad-2', desc: 'Empareja los verbos', color: 'text-pink-500' },
+    { id: 'quiz', title: 'Quiz Rápido', icon: 'brain-circuit', desc: 'Evalúa tus conocimientos', color: 'text-red-500' },
+    { id: 'story', title: 'Modo Historia', icon: 'film', desc: 'Practica con The Book of Life', color: 'text-indigo-500' },
+    { id: 'progress', title: 'Mi Progreso', icon: 'trophy', desc: 'Estadísticas y logros', color: 'text-yellow-500' },
   ];
 
-  return (
-    <div className="animate-fade-in">
-      <div className="text-center mb-10">
-        <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-900 mb-4">¡Domina los verbos en pasado!</h1>
-        <p className="text-lg text-slate-600 max-w-2xl mx-auto">Selecciona una actividad para empezar. Aprende las reglas, escucha la pronunciación y pon a prueba tus conocimientos.</p>
+  let cardsHTML = menuItems.map(item => `
+    <div onclick="setView('${item.id}')" class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 cursor-pointer hover:shadow-md transition-shadow flex flex-col items-center text-center hover:-translate-y-1 card-transition border-b-4 border-b-transparent hover:border-b-indigo-500">
+      <div class="p-4 rounded-full bg-slate-50 mb-4 ${item.color}">
+        <i data-lucide="${item.icon}" class="w-8 h-8"></i>
       </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-        {menuItems.map(item => (
-          <Card key={item.id} onClick={() => setView(item.id)} className="flex flex-col items-center text-center hover:-translate-y-1 transition-transform border-b-4 border-transparent hover:border-indigo-500">
-            <div className={`p-4 rounded-full bg-slate-50 mb-4 ${item.color}`}>
-              {item.icon}
-            </div>
-            <h2 className="text-xl font-bold mb-2">{item.title}</h2>
-            <p className="text-slate-500 text-sm">{item.desc}</p>
-          </Card>
-        ))}
+      <h2 class="text-xl font-bold mb-2">${item.title}</h2>
+      <p class="text-slate-500 text-sm">${item.desc}</p>
+    </div>
+  `).join('');
+
+  return `
+    <div class="animate-fade-in">
+      <div class="text-center mb-10">
+        <h1 class="text-3xl sm:text-4xl font-extrabold text-slate-900 mb-4">¡Domina los verbos en pasado!</h1>
+        <p class="text-lg text-slate-600 max-w-2xl mx-auto">Selecciona una actividad para empezar. Aprende las reglas, escucha la pronunciación y pon a prueba tus conocimientos.</p>
+      </div>
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+        ${cardsHTML}
       </div>
     </div>
-  );
+  `;
 }
 
-// 1. APRENDER VERBOS
-function LearnVerbs({ setView }) {
-  const [filter, setFilter] = useState('all'); // all, regular, irregular, t, d, id
-  const [searchTerm, setSearchTerm] = useState('');
+// 1. APRENDER VERBOS (State)
+window.learnState = { filter: 'all', search: '' };
+window.updateLearnSearch = (val) => { window.learnState.search = val; renderApp(); };
+window.updateLearnFilter = (val) => { window.learnState.filter = val; renderApp(); };
 
-  const filteredVerbs = useMemo(() => {
-    return verbsData.filter(v => {
-      const matchesSearch = v.present.includes(searchTerm.toLowerCase()) || v.spanish.includes(searchTerm.toLowerCase());
-      if (!matchesSearch) return false;
-      if (filter === 'regular') return v.type === 'regular';
-      if (filter === 'irregular') return v.type === 'irregular';
-      if (filter === 't') return v.sound === 't';
-      if (filter === 'd') return v.sound === 'd';
-      if (filter === 'id') return v.sound === 'id';
-      return true;
-    });
-  }, [filter, searchTerm]);
+function renderLearn() {
+  const s = window.learnState;
+  const filteredVerbs = verbsData.filter(v => {
+    const matchesSearch = v.present.includes(s.search.toLowerCase()) || v.spanish.includes(s.search.toLowerCase());
+    if (!matchesSearch) return false;
+    if (s.filter === 'regular') return v.type === 'regular';
+    if (s.filter === 'irregular') return v.type === 'irregular';
+    if (s.filter === 't') return v.sound === 't';
+    if (s.filter === 'd') return v.sound === 'd';
+    if (s.filter === 'id') return v.sound === 'id';
+    return true;
+  });
 
-  return (
-    <div className="space-y-6 animate-fade-in">
-      <div className="flex items-center justify-between">
-        <Button variant="outline" onClick={() => setView('menu')}><ArrowLeft size={18}/> Menú</Button>
-        <h2 className="text-2xl font-bold">Diccionario de Verbos</h2>
+  const filters = [
+    { id: 'all', label: 'Todos' }, { id: 'regular', label: 'Regulares' }, { id: 'irregular', label: 'Irregulares' },
+    { id: 't', label: 'Sonido /t/' }, { id: 'd', label: 'Sonido /d/' }, { id: 'id', label: 'Sonido /id/' }
+  ];
+
+  let filterButtons = filters.map(f => `
+    <button onclick="updateLearnFilter('${f.id}')" class="px-3 py-1 rounded-full text-sm font-medium transition-colors ${s.filter === f.id ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}">
+      ${f.label}
+    </button>
+  `).join('');
+
+  let tableRows = filteredVerbs.map(v => `
+    <tr class="border-b hover:bg-slate-50 transition-colors">
+      <td class="p-4 font-semibold text-indigo-700">${v.present}</td>
+      <td class="p-4 font-medium">${v.past} ${v.type === 'regular' ? `<span class="block text-xs text-slate-400">Pron: ${v.pron}</span>` : ''}</td>
+      <td class="p-4 text-slate-600">${v.spanish}</td>
+      <td class="p-4"><span class="px-2 py-1 rounded text-xs font-bold ${v.type === 'regular' ? 'bg-emerald-100 text-emerald-800' : 'bg-orange-100 text-orange-800'}">${v.type}</span></td>
+      <td class="p-4 font-mono text-slate-500">${v.sound ? `/${v.sound}/` : '-'}</td>
+      <td class="p-4 text-center">
+        <button onclick="playAudio('${v.past}')" class="text-indigo-500 hover:text-indigo-700 p-2 rounded-full hover:bg-indigo-50">
+          <i data-lucide="volume-2" class="w-5 h-5"></i>
+        </button>
+      </td>
+    </tr>
+  `).join('');
+
+  if (filteredVerbs.length === 0) tableRows = `<tr><td colSpan="6" class="p-8 text-center text-slate-500">No se encontraron verbos.</td></tr>`;
+
+  return `
+    <div class="space-y-6 animate-fade-in">
+      <div class="flex items-center justify-between">
+        ${getButtonHTML('Menú', "setView('menu')", 'outline', '<i data-lucide="arrow-left" class="w-4 h-4"></i>')}
+        <h2 class="text-2xl font-bold">Diccionario de Verbos</h2>
       </div>
-
-      <div className="bg-white p-4 rounded-xl shadow-sm flex flex-col md:flex-row gap-4 justify-between items-center">
-        <input 
-          type="text" 
-          placeholder="Buscar verbo..." 
-          className="w-full md:w-64 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-        />
-        <div className="flex flex-wrap gap-2 justify-center">
-          {[
-            { id: 'all', label: 'Todos' },
-            { id: 'regular', label: 'Regulares' },
-            { id: 'irregular', label: 'Irregulares' },
-            { id: 't', label: 'Sonido /t/' },
-            { id: 'd', label: 'Sonido /d/' },
-            { id: 'id', label: 'Sonido /id/' },
-          ].map(f => (
-            <button 
-              key={f.id}
-              onClick={() => setFilter(f.id)}
-              className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${filter === f.id ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
-            >
-              {f.label}
-            </button>
-          ))}
-        </div>
+      <div class="bg-white p-4 rounded-xl shadow-sm flex flex-col md:flex-row gap-4 justify-between items-center">
+        <input type="text" placeholder="Buscar verbo..." class="w-full md:w-64 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" value="${s.search}" onkeyup="updateLearnSearch(this.value)">
+        <div class="flex flex-wrap gap-2 justify-center">${filterButtons}</div>
       </div>
-
-      <div className="bg-white rounded-xl shadow-sm overflow-x-auto">
-        <table className="w-full text-left border-collapse">
+      <div class="bg-white rounded-xl shadow-sm overflow-x-auto">
+        <table class="w-full text-left border-collapse">
           <thead>
-            <tr className="bg-slate-100 text-slate-700">
-              <th className="p-4 border-b">Presente</th>
-              <th className="p-4 border-b">Pasado</th>
-              <th className="p-4 border-b">Español</th>
-              <th className="p-4 border-b">Tipo</th>
-              <th className="p-4 border-b">Sonido Final</th>
-              <th className="p-4 border-b text-center">Escuchar</th>
+            <tr class="bg-slate-100 text-slate-700">
+              <th class="p-4 border-b">Presente</th><th class="p-4 border-b">Pasado</th><th class="p-4 border-b">Español</th>
+              <th class="p-4 border-b">Tipo</th><th class="p-4 border-b">Sonido Final</th><th class="p-4 border-b text-center">Escuchar</th>
             </tr>
           </thead>
-          <tbody>
-            {filteredVerbs.map((v, i) => (
-              <tr key={i} className="border-b hover:bg-slate-50 transition-colors">
-                <td className="p-4 font-semibold text-indigo-700">{v.present}</td>
-                <td className="p-4 font-medium">
-                  {v.past}
-                  {v.type === 'regular' && <span className="block text-xs text-slate-400">Pron: {v.pron}</span>}
-                </td>
-                <td className="p-4 text-slate-600">{v.spanish}</td>
-                <td className="p-4">
-                  <span className={`px-2 py-1 rounded text-xs font-bold ${v.type === 'regular' ? 'bg-emerald-100 text-emerald-800' : 'bg-orange-100 text-orange-800'}`}>
-                    {v.type}
-                  </span>
-                </td>
-                <td className="p-4 font-mono text-slate-500">
-                  {v.sound ? `/${v.sound}/` : '-'}
-                </td>
-                <td className="p-4 text-center">
-                  <button onClick={() => playAudio(v.past)} className="text-indigo-500 hover:text-indigo-700 p-2 rounded-full hover:bg-indigo-50">
-                    <Volume2 size={20} />
-                  </button>
-                </td>
-              </tr>
-            ))}
-            {filteredVerbs.length === 0 && (
-              <tr><td colSpan="6" className="p-8 text-center text-slate-500">No se encontraron verbos.</td></tr>
-            )}
-          </tbody>
+          <tbody>${tableRows}</tbody>
         </table>
       </div>
     </div>
-  );
+  `;
 }
 
 // 2. PRONUNCIACIÓN
-function Pronunciation({ setView }) {
+function renderPronunciation() {
   const rules = [
-    {
-      sound: '/t/',
-      desc: 'Si el verbo en su forma base termina en un sonido SORDO (p, k, f, s, sh, ch).',
-      examples: ['watch → watched', 'work → worked', 'help → helped'],
-      audioWord: 'watched',
-      color: 'bg-rose-50 border-rose-200'
-    },
-    {
-      sound: '/d/',
-      desc: 'Si el verbo en su forma base termina en un sonido SONORO (l, n, r, g, v, z, m) o una VOCAL.',
-      examples: ['play → played', 'clean → cleaned', 'live → lived'],
-      audioWord: 'played',
-      color: 'bg-emerald-50 border-emerald-200'
-    },
-    {
-      sound: '/id/',
-      desc: 'Si el verbo en su forma base termina en el sonido /t/ o /d/. ¡Es la única vez que pronuncias una sílaba extra!',
-      examples: ['want → wanted', 'need → needed', 'visit → visited'],
-      audioWord: 'wanted',
-      color: 'bg-blue-50 border-blue-200'
-    }
+    { sound: '/t/', desc: 'Si el verbo en su forma base termina en un sonido SORDO (p, k, f, s, sh, ch).', examples: ['watch → watched', 'work → worked', 'help → helped'], audioWord: 'watched', color: 'bg-rose-50 border-rose-200 text-rose-800' },
+    { sound: '/d/', desc: 'Si el verbo en su forma base termina en un sonido SONORO (l, n, r, g, v, z, m) o una VOCAL.', examples: ['play → played', 'clean → cleaned', 'live → lived'], audioWord: 'played', color: 'bg-emerald-50 border-emerald-200 text-emerald-800' },
+    { sound: '/id/', desc: 'Si el verbo en su forma base termina en el sonido /t/ o /d/. ¡Es la única vez que pronuncias una sílaba extra!', examples: ['want → wanted', 'need → needed', 'visit → visited'], audioWord: 'wanted', color: 'bg-blue-50 border-blue-200 text-blue-800' }
   ];
 
-  return (
-    <div className="space-y-6 animate-fade-in">
-      <div className="flex items-center justify-between">
-        <Button variant="outline" onClick={() => setView('menu')}><ArrowLeft size={18}/> Menú</Button>
-        <h2 className="text-2xl font-bold">Reglas de Pronunciación (-ed)</h2>
+  let rulesHTML = rules.map(rule => `
+    <div class="bg-white rounded-xl shadow-sm border-2 ${rule.color} p-6">
+      <div class="flex justify-between items-center mb-4">
+        <h3 class="text-3xl font-black">${rule.sound}</h3>
+        <button onclick="playAudio('${rule.audioWord}')" class="bg-white p-3 rounded-full shadow hover:scale-110 transition-transform">
+          <i data-lucide="volume-2" class="w-6 h-6 text-indigo-600"></i>
+        </button>
       </div>
-
-      <div className="bg-white p-6 rounded-xl shadow-sm text-lg text-slate-700">
-        <p>Los verbos regulares en pasado terminan en <strong>-ed</strong>, pero esta terminación tiene <strong>3 pronunciaciones diferentes</strong> dependiendo del sonido final del verbo original. ¡Nunca se pronuncia como se escribe en español!</p>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {rules.map((rule, i) => (
-          <Card key={i} className={`border-2 ${rule.color}`}>
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-3xl font-black">{rule.sound}</h3>
-              <button onClick={() => playAudio(rule.audioWord)} className="bg-white p-3 rounded-full shadow hover:scale-110 transition-transform">
-                <Volume2 size={24} className="text-indigo-600" />
-              </button>
-            </div>
-            <p className="text-slate-700 mb-4 h-24">{rule.desc}</p>
-            <div className="bg-white bg-opacity-60 rounded-lg p-3">
-              <h4 className="font-bold text-sm text-slate-500 mb-2">Ejemplos:</h4>
-              <ul className="space-y-2">
-                {rule.examples.map((ex, j) => (
-                  <li key={j} className="flex justify-between items-center font-mono font-medium text-indigo-900">
-                    {ex}
-                    <button onClick={() => playAudio(ex.split('→')[1].trim())} className="text-indigo-400 hover:text-indigo-600">
-                      <PlayCircle size={16} />
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </Card>
-        ))}
+      <p class="text-slate-700 mb-4 h-24">${rule.desc}</p>
+      <div class="bg-white bg-opacity-60 rounded-lg p-3">
+        <h4 class="font-bold text-sm text-slate-500 mb-2">Ejemplos:</h4>
+        <ul class="space-y-2">
+          ${rule.examples.map(ex => `
+            <li class="flex justify-between items-center font-mono font-medium text-indigo-900">
+              ${ex}
+              <button onclick="playAudio('${ex.split('→')[1].trim()}')" class="text-indigo-400 hover:text-indigo-600"><i data-lucide="play-circle" class="w-4 h-4"></i></button>
+            </li>
+          `).join('')}
+        </ul>
       </div>
     </div>
-  );
+  `).join('');
+
+  return `
+    <div class="space-y-6 animate-fade-in">
+      <div class="flex items-center justify-between">
+        ${getButtonHTML('Menú', "setView('menu')", 'outline', '<i data-lucide="arrow-left" class="w-4 h-4"></i>')}
+        <h2 class="text-2xl font-bold">Reglas de Pronunciación (-ed)</h2>
+      </div>
+      <div class="bg-white p-6 rounded-xl shadow-sm text-lg text-slate-700">
+        <p>Los verbos regulares en pasado terminan en <strong>-ed</strong>, pero esta terminación tiene <strong>3 pronunciaciones diferentes</strong> dependiendo del sonido final del verbo original. ¡Nunca se pronuncia como se escribe en español!</p>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">${rulesHTML}</div>
+    </div>
+  `;
 }
 
-// 3. CREAR FRASES
-function CreateSentences({ setView }) {
-  const [mode, setMode] = useState('affirmative'); // affirmative, negative, question
-  const [subject, setSubject] = useState('');
-  const [verb, setVerb] = useState('');
-  const [complement, setComplement] = useState('');
+// 3. CREAR FRASES (State)
+window.sentState = { mode: 'affirmative', subject: '', verb: '', complement: '' };
+window.updateSent = (key, val) => { window.sentState[key] = val; renderApp(); };
 
+function renderSentences() {
+  const s = window.sentState;
   const subjects = ['Manolo', 'María', 'Joaquín', 'They', 'We', 'I'];
   const complements = ['the movie', 'a song', 'the town', 'to the bull', 'a letter'];
-  const testVerbs = verbsData.slice(0, 15); // Just a subset for ease
+  const testVerbs = verbsData.slice(0, 15);
 
-  const getSentence = () => {
-    if (!subject || !verb || !complement) return '';
-    const vObj = testVerbs.find(v => v.present === verb);
-    if (mode === 'affirmative') {
-      return `${subject} ${vObj.past} ${complement}.`;
-    } else if (mode === 'negative') {
-      return `${subject} did not ${vObj.present} ${complement}.`;
-    } else if (mode === 'question') {
-      return `Did ${subject} ${vObj.present} ${complement}?`;
-    }
-  };
+  let sentence = '';
+  let vObj = testVerbs.find(v => v.present === s.verb);
+  if (s.subject && s.verb && s.complement && vObj) {
+    if (s.mode === 'affirmative') sentence = `${s.subject} ${vObj.past} ${s.complement}.`;
+    else if (s.mode === 'negative') sentence = `${s.subject} did not ${vObj.present} ${s.complement}.`;
+    else if (s.mode === 'question') sentence = `Did ${s.subject} ${vObj.present} ${s.complement}?`;
+  }
 
-  const sentence = getSentence();
-  const vObj = testVerbs.find(v => v.present === verb);
-
-  return (
-    <div className="space-y-6 animate-fade-in">
-      <div className="flex items-center justify-between">
-        <Button variant="outline" onClick={() => setView('menu')}><ArrowLeft size={18}/> Menú</Button>
-        <h2 className="text-2xl font-bold">Constructor de Frases</h2>
+  return `
+    <div class="space-y-6 animate-fade-in">
+      <div class="flex items-center justify-between">
+        ${getButtonHTML('Menú', "setView('menu')", 'outline', '<i data-lucide="arrow-left" class="w-4 h-4"></i>')}
+        <h2 class="text-2xl font-bold">Constructor de Frases</h2>
       </div>
-
-      <div className="flex gap-4 justify-center">
-        <Button variant={mode === 'affirmative' ? 'primary' : 'outline'} onClick={() => setMode('affirmative')}>Afirmativa (+)</Button>
-        <Button variant={mode === 'negative' ? 'primary' : 'outline'} onClick={() => setMode('negative')}>Negativa (-)</Button>
-        <Button variant={mode === 'question' ? 'primary' : 'outline'} onClick={() => setMode('question')}>Pregunta (?)</Button>
+      <div class="flex gap-4 justify-center">
+        ${getButtonHTML('Afirmativa (+)', "updateSent('mode', 'affirmative')", s.mode === 'affirmative' ? 'primary' : 'outline')}
+        ${getButtonHTML('Negativa (-)', "updateSent('mode', 'negative')", s.mode === 'negative' ? 'primary' : 'outline')}
+        ${getButtonHTML('Pregunta (?)', "updateSent('mode', 'question')", s.mode === 'question' ? 'primary' : 'outline')}
       </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {/* Subject */}
-        <Card>
-          <h3 className="font-bold text-slate-500 mb-2">1. Sujeto (Subject)</h3>
-          <select className="w-full p-2 border rounded-lg" value={subject} onChange={e => setSubject(e.target.value)}>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+          <h3 class="font-bold text-slate-500 mb-2">1. Sujeto (Subject)</h3>
+          <select class="w-full p-2 border rounded-lg" onchange="updateSent('subject', this.value)">
             <option value="">Selecciona...</option>
-            {subjects.map(s => <option key={s} value={s}>{s}</option>)}
+            ${subjects.map(sub => `<option value="${sub}" ${s.subject === sub ? 'selected' : ''}>${sub}</option>`).join('')}
           </select>
-        </Card>
-        {/* Verb */}
-        <Card>
-          <h3 className="font-bold text-slate-500 mb-2">2. Verbo (Verb)</h3>
-          <select className="w-full p-2 border rounded-lg" value={verb} onChange={e => setVerb(e.target.value)}>
+        </div>
+        <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+          <h3 class="font-bold text-slate-500 mb-2">2. Verbo (Verb)</h3>
+          <select class="w-full p-2 border rounded-lg" onchange="updateSent('verb', this.value)">
             <option value="">Selecciona (Forma base)...</option>
-            {testVerbs.map(v => <option key={v.present} value={v.present}>{v.present} ({v.spanish})</option>)}
+            ${testVerbs.map(v => `<option value="${v.present}" ${s.verb === v.present ? 'selected' : ''}>${v.present} (${v.spanish})</option>`).join('')}
           </select>
-          {mode === 'negative' && <p className="text-xs text-rose-500 mt-2 font-medium">Usamos 'did not', el verbo vuelve a su forma base.</p>}
-          {mode === 'question' && <p className="text-xs text-rose-500 mt-2 font-medium">Usamos 'Did' al inicio, el verbo vuelve a su forma base.</p>}
-        </Card>
-        {/* Complement */}
-        <Card>
-          <h3 className="font-bold text-slate-500 mb-2">3. Complemento</h3>
-          <select className="w-full p-2 border rounded-lg" value={complement} onChange={e => setComplement(e.target.value)}>
+          ${s.mode === 'negative' ? `<p class="text-xs text-rose-500 mt-2 font-medium">Usamos 'did not', el verbo vuelve a su forma base.</p>` : ''}
+          ${s.mode === 'question' ? `<p class="text-xs text-rose-500 mt-2 font-medium">Usamos 'Did' al inicio, el verbo vuelve a su forma base.</p>` : ''}
+        </div>
+        <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+          <h3 class="font-bold text-slate-500 mb-2">3. Complemento</h3>
+          <select class="w-full p-2 border rounded-lg" onchange="updateSent('complement', this.value)">
             <option value="">Selecciona...</option>
-            {complements.map(c => <option key={c} value={c}>{c}</option>)}
+            ${complements.map(c => `<option value="${c}" ${s.complement === c ? 'selected' : ''}>${c}</option>`).join('')}
           </select>
-        </Card>
+        </div>
       </div>
-
-      {sentence && (
-        <Card className="bg-indigo-50 border-indigo-200 mt-8">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="text-2xl sm:text-3xl font-black text-indigo-900">{sentence}</h3>
-            <button onClick={() => playAudio(sentence)} className="p-3 bg-indigo-600 text-white rounded-full hover:bg-indigo-700 shadow-lg">
-              <Volume2 size={24} />
+      ${sentence ? `
+        <div class="bg-indigo-50 border border-indigo-200 mt-8 p-6 rounded-xl shadow-sm">
+          <div class="flex justify-between items-center mb-4">
+            <h3 class="text-2xl sm:text-3xl font-black text-indigo-900">${sentence}</h3>
+            <button onclick="playAudio('${sentence.replace("'", "\\'")}')" class="p-3 bg-indigo-600 text-white rounded-full hover:bg-indigo-700 shadow-lg">
+              <i data-lucide="volume-2" class="w-6 h-6"></i>
             </button>
           </div>
-          
-          <div className="bg-white p-4 rounded-lg">
-            <h4 className="font-bold text-slate-700 mb-2">Explicación Gramatical:</h4>
-            <ul className="list-disc pl-5 text-slate-600 space-y-1">
-              <li><strong>Sujeto:</strong> {subject}</li>
-              {mode === 'affirmative' && <li><strong>Verbo en pasado:</strong> {vObj.past} ({vObj.type === 'regular' ? `Regular, sonido /${vObj.sound}/` : 'Irregular'})</li>}
-              {mode === 'negative' && <li><strong>Auxiliar negativo:</strong> did not (didn't) + <strong>Verbo base:</strong> {vObj.present}</li>}
-              {mode === 'question' && <li><strong>Auxiliar pregunta:</strong> Did + <strong>Verbo base:</strong> {vObj.present}</li>}
-              <li><strong>Complemento:</strong> {complement}</li>
-              <li className="mt-2 text-indigo-700 font-medium"><strong>Traducción sugerida:</strong> {
-                mode === 'affirmative' ? `[Sujeto] ${vObj.spanish} (en pasado) [Complemento]` :
-                mode === 'negative' ? `[Sujeto] no ${vObj.spanish} (en pasado) [Complemento]` :
+          <div class="bg-white p-4 rounded-lg">
+            <h4 class="font-bold text-slate-700 mb-2">Explicación Gramatical:</h4>
+            <ul class="list-disc pl-5 text-slate-600 space-y-1">
+              <li><strong>Sujeto:</strong> ${s.subject}</li>
+              ${s.mode === 'affirmative' ? `<li><strong>Verbo en pasado:</strong> ${vObj.past} (${vObj.type === 'regular' ? `Regular, sonido /${vObj.sound}/` : 'Irregular'})</li>` : ''}
+              ${s.mode === 'negative' ? `<li><strong>Auxiliar negativo:</strong> did not (didn't) + <strong>Verbo base:</strong> ${vObj.present}</li>` : ''}
+              ${s.mode === 'question' ? `<li><strong>Auxiliar pregunta:</strong> Did + <strong>Verbo base:</strong> ${vObj.present}</li>` : ''}
+              <li><strong>Complemento:</strong> ${s.complement}</li>
+              <li class="mt-2 text-indigo-700 font-medium"><strong>Traducción sugerida:</strong> ${
+                s.mode === 'affirmative' ? `[Sujeto] ${vObj.spanish} (en pasado) [Complemento]` :
+                s.mode === 'negative' ? `[Sujeto] no ${vObj.spanish} (en pasado) [Complemento]` :
                 `¿[Sujeto] ${vObj.spanish} (en pasado) [Complemento]?`
               }</li>
             </ul>
           </div>
-        </Card>
-      )}
+        </div>
+      ` : ''}
     </div>
-  );
+  `;
 }
 
-// 4. JUEGO DE COMPLETAR FRASES
-function FillBlanks({ setView, updateProgress }) {
-  const questions = [
-    { text: "Manolo ______ a song for María.", options: ['sing', 'sang', 'sung', 'sings'], correct: 'sang', verbObj: verbsData.find(v => v.present === 'sing') },
-    { text: "They ______ the movie yesterday.", options: ['watch', 'watches', 'watched', 'watching'], correct: 'watched', verbObj: verbsData.find(v => v.present === 'watch') },
-    { text: "María did not ______ the letter.", options: ['wrote', 'written', 'writes', 'write'], correct: 'write', exp: "Después de 'did not', el verbo vuelve a su forma base." },
-    { text: "______ Joaquín protect the town?", options: ['Do', 'Does', 'Did', 'Done'], correct: 'Did', exp: "Para preguntas en pasado simple usamos el auxiliar 'Did'." },
-    { text: "She ______ to Mexico last year.", options: ['go', 'goes', 'went', 'gone'], correct: 'went', verbObj: verbsData.find(v => v.present === 'go') }
-  ];
+// 4. JUEGO DE COMPLETAR FRASES (State)
+const fbQuestions = [
+  { text: "Manolo ______ a song for María.", options: ['sing', 'sang', 'sung', 'sings'], correct: 'sang', verb: 'sing' },
+  { text: "They ______ the movie yesterday.", options: ['watch', 'watches', 'watched', 'watching'], correct: 'watched', verb: 'watch' },
+  { text: "María did not ______ the letter.", options: ['wrote', 'written', 'writes', 'write'], correct: 'write', exp: "Después de 'did not', el verbo vuelve a su forma base." },
+  { text: "______ Joaquín protect the town?", options: ['Do', 'Does', 'Did', 'Done'], correct: 'Did', exp: "Para preguntas en pasado simple usamos el auxiliar 'Did'." },
+  { text: "She ______ to Mexico last year.", options: ['go', 'goes', 'went', 'gone'], correct: 'went', verb: 'go' }
+];
+window.fbState = { currentQ: 0, selected: null, showResult: false };
 
-  const [currentQ, setCurrentQ] = useState(0);
-  const [selected, setSelected] = useState(null);
-  const [showResult, setShowResult] = useState(false);
+window.fbSelect = (opt) => {
+  if (window.fbState.showResult) return;
+  window.fbState.selected = opt;
+  window.fbState.showResult = true;
+  if (opt === fbQuestions[window.fbState.currentQ].correct) {
+    updateProgress(10);
+    playAudio('Correct');
+  } else playAudio('Try again');
+  renderApp();
+};
+window.fbNext = () => {
+  window.fbState.selected = null;
+  window.fbState.showResult = false;
+  if (window.fbState.currentQ < fbQuestions.length - 1) window.fbState.currentQ++;
+  else window.fbState.currentQ = 0;
+  renderApp();
+};
 
-  const handleSelect = (option) => {
-    if (showResult) return;
-    setSelected(option);
-    setShowResult(true);
-    if (option === questions[currentQ].correct) {
-      updateProgress(10);
-      playAudio('Correct');
-    } else {
-      playAudio('Try again');
-    }
-  };
+function renderFillBlanks() {
+  const s = window.fbState;
+  const q = fbQuestions[s.currentQ];
+  const isCorrect = s.selected === q.correct;
+  const vObj = verbsData.find(v => v.present === q.verb);
 
-  const nextQuestion = () => {
-    setSelected(null);
-    setShowResult(false);
-    if (currentQ < questions.length - 1) {
-      setCurrentQ(currentQ + 1);
-    } else {
-      setCurrentQ(0); // loop or show final score
-    }
-  };
+  let sentenceHTML = q.text.split('______').map((part, i, arr) => {
+    let blank = i < arr.length - 1 ? `<span class="inline-block w-24 border-b-2 mx-2 ${s.showResult ? (isCorrect ? 'border-emerald-500 text-emerald-600' : 'border-rose-500 text-rose-600') : 'border-slate-400'}">${s.selected || '______'}</span>` : '';
+    return part + blank;
+  }).join('');
 
-  const q = questions[currentQ];
-  const isCorrect = selected === q.correct;
+  let optionsHTML = q.options.map(opt => `
+    <button onclick="fbSelect('${opt}')" class="p-4 rounded-xl text-lg font-semibold transition-all shadow-sm border-2 
+      ${s.showResult && opt === q.correct ? 'bg-emerald-100 border-emerald-500 text-emerald-800' : ''}
+      ${s.showResult && s.selected === opt && opt !== q.correct ? 'bg-rose-100 border-rose-500 text-rose-800' : ''}
+      ${!s.showResult ? 'bg-white border-slate-200 hover:border-indigo-400 hover:shadow-md' : 'opacity-70 cursor-default'}
+    ">${opt}</button>
+  `).join('');
 
-  return (
-    <div className="space-y-6 animate-fade-in max-w-2xl mx-auto">
-      <div className="flex items-center justify-between">
-        <Button variant="outline" onClick={() => setView('menu')}><ArrowLeft size={18}/> Menú</Button>
-        <span className="font-bold text-slate-500">Pregunta {currentQ + 1} / {questions.length}</span>
+  return `
+    <div class="space-y-6 animate-fade-in max-w-2xl mx-auto">
+      <div class="flex items-center justify-between">
+        ${getButtonHTML('Menú', "setView('menu')", 'outline', '<i data-lucide="arrow-left" class="w-4 h-4"></i>')}
+        <span class="font-bold text-slate-500">Pregunta ${s.currentQ + 1} / ${fbQuestions.length}</span>
       </div>
-
-      <Card className="text-center p-8">
-        <h3 className="text-2xl font-medium text-slate-800 mb-8">
-          {q.text.split('______').map((part, i, arr) => (
-            <React.Fragment key={i}>
-              {part}
-              {i < arr.length - 1 && (
-                <span className={`inline-block w-24 border-b-2 mx-2 ${showResult ? (isCorrect ? 'border-emerald-500 text-emerald-600' : 'border-rose-500 text-rose-600') : 'border-slate-400'}`}>
-                  {selected || '______'}
-                </span>
-              )}
-            </React.Fragment>
-          ))}
-        </h3>
-
-        <div className="grid grid-cols-2 gap-4">
-          {q.options.map(opt => (
-            <button
-              key={opt}
-              onClick={() => handleSelect(opt)}
-              disabled={showResult}
-              className={`p-4 rounded-xl text-lg font-semibold transition-all shadow-sm border-2 
-                ${showResult && opt === q.correct ? 'bg-emerald-100 border-emerald-500 text-emerald-800' : ''}
-                ${showResult && selected === opt && opt !== q.correct ? 'bg-rose-100 border-rose-500 text-rose-800' : ''}
-                ${!showResult ? 'bg-white border-slate-200 hover:border-indigo-400 hover:shadow-md' : 'opacity-70 cursor-default'}
-              `}
-            >
-              {opt}
-            </button>
-          ))}
-        </div>
-
-        {showResult && (
-          <div className={`mt-8 p-4 rounded-lg text-left ${isCorrect ? 'bg-emerald-50' : 'bg-rose-50'}`}>
-            <div className="flex items-center gap-2 mb-2 font-bold">
-              {isCorrect ? <><CheckCircle2 className="text-emerald-500"/> ¡Correcto!</> : <><XCircle className="text-rose-500"/> Incorrecto</>}
+      <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-8 text-center">
+        <h3 class="text-2xl font-medium text-slate-800 mb-8">${sentenceHTML}</h3>
+        <div class="grid grid-cols-2 gap-4">${optionsHTML}</div>
+        ${s.showResult ? `
+          <div class="mt-8 p-4 rounded-lg text-left ${isCorrect ? 'bg-emerald-50' : 'bg-rose-50'}">
+            <div class="flex items-center gap-2 mb-2 font-bold ${isCorrect ? 'text-emerald-600' : 'text-rose-600'}">
+              <i data-lucide="${isCorrect ? 'check-circle-2' : 'x-circle'}" class="w-5 h-5"></i> ${isCorrect ? '¡Correcto!' : 'Incorrecto'}
             </div>
-            <p className="text-slate-700">
-              {q.exp || (isCorrect ? `¡Muy bien! "${q.correct}" es la forma correcta.` : `La respuesta correcta era "${q.correct}".`)}
-              {q.verbObj && q.verbObj.type === 'regular' && ` Este verbo es regular y suena /${q.verbObj.sound}/ al final.`}
-              {q.verbObj && q.verbObj.type === 'irregular' && ` Este es un verbo irregular (presente: ${q.verbObj.present}).`}
+            <p class="text-slate-700">
+              ${q.exp || (isCorrect ? `¡Muy bien! "${q.correct}" es la forma correcta.` : `La respuesta correcta era "${q.correct}".`)}
+              ${vObj && vObj.type === 'regular' ? ` Este verbo es regular y suena /${vObj.sound}/ al final.` : ''}
+              ${vObj && vObj.type === 'irregular' ? ` Este es un verbo irregular (presente: ${vObj.present}).` : ''}
             </p>
-            <Button onClick={nextQuestion} className="w-full mt-4" variant={isCorrect ? 'success' : 'primary'}>
-              Siguiente Pregunta
-            </Button>
+            ${getButtonHTML('Siguiente Pregunta', 'fbNext()', isCorrect ? 'success' : 'primary', '', 'w-full mt-4')}
           </div>
-        )}
-      </Card>
+        ` : ''}
+      </div>
     </div>
-  );
+  `;
 }
 
-// 5. CLASIFICAR VERBOS
-function ClassifyGame({ setView, updateProgress }) {
-  // Select some verbs for the game
-  const gameVerbs = useMemo(() => {
-    let arr = [...verbsData].sort(() => 0.5 - Math.random()).slice(0, 10);
-    return arr;
-  }, []);
+// 5. CLASIFICAR VERBOS (State)
+window.classState = { verbs: [], currentIndex: 0, feedback: null };
+window.initClassify = () => {
+  window.classState.verbs = [...verbsData].sort(() => 0.5 - Math.random()).slice(0, 10);
+  window.classState.currentIndex = 0;
+  window.classState.feedback = null;
+  renderApp();
+}
+window.classifySelect = (catId) => {
+  if (window.classState.feedback !== null) return;
+  const v = window.classState.verbs[window.classState.currentIndex];
+  const isIrreg = v.type === 'irregular';
+  const isCorrect = (isIrreg && catId === 'irregular') || (!isIrreg && v.sound === catId);
 
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [feedback, setFeedback] = useState(null);
+  window.classState.feedback = isCorrect ? 'correct' : 'incorrect';
+  renderApp();
 
-  const categories = [
-    { id: 't', label: 'Regular /t/' },
-    { id: 'd', label: 'Regular /d/' },
-    { id: 'id', label: 'Regular /id/' },
-    { id: 'irregular', label: 'Irregular' }
-  ];
+  if (isCorrect) {
+    updateProgress(5);
+    playAudio(v.past);
+    setTimeout(() => {
+      window.classState.feedback = null;
+      if (window.classState.currentIndex < window.classState.verbs.length - 1) window.classState.currentIndex++;
+      else window.classState.currentIndex = -1;
+      renderApp();
+    }, 1500);
+  } else {
+    setTimeout(() => { window.classState.feedback = null; renderApp(); }, 1000);
+  }
+};
 
-  const handleClassify = (catId) => {
-    const v = gameVerbs[currentIndex];
-    const isIrreg = v.type === 'irregular';
-    const isCorrect = (isIrreg && catId === 'irregular') || (!isIrreg && v.sound === catId);
+function renderClassify() {
+  if (window.classState.verbs.length === 0) window.initClassify();
+  const s = window.classState;
 
-    if (isCorrect) {
-      setFeedback('correct');
-      updateProgress(5);
-      playAudio(v.past);
+  if (s.currentIndex === -1) return `
+    <div class="text-center animate-fade-in py-20 space-y-6">
+      <i data-lucide="trophy" class="w-16 h-16 text-yellow-400 mx-auto"></i>
+      <h2 class="text-3xl font-bold">¡Juego Completado!</h2>
+      ${getButtonHTML('Volver al Menú', "setView('menu')", 'primary', '', 'mx-auto')}
+    </div>
+  `;
+
+  const verb = s.verbs[s.currentIndex];
+  const categories = [{ id: 't', label: 'Regular /t/' }, { id: 'd', label: 'Regular /d/' }, { id: 'id', label: 'Regular /id/' }, { id: 'irregular', label: 'Irregular' }];
+
+  let catButtons = categories.map(cat => `
+    <button onclick="classifySelect('${cat.id}')" class="bg-white border-2 border-slate-200 p-6 rounded-xl text-xl font-bold text-slate-700 hover:border-indigo-500 hover:bg-indigo-50 hover:text-indigo-700 transition-colors shadow-sm">
+      ${cat.label}
+    </button>
+  `).join('');
+
+  return `
+    <div class="space-y-6 animate-fade-in max-w-2xl mx-auto">
+      <div class="flex items-center justify-between">
+        ${getButtonHTML('Menú', "setView('menu')", 'outline', '<i data-lucide="arrow-left" class="w-4 h-4"></i>')}
+        <span class="font-bold text-slate-500">Verbo ${s.currentIndex + 1} de ${s.verbs.length}</span>
+      </div>
+      <div class="text-center mb-8">
+        <p class="text-slate-500 mb-2">Clasifica el siguiente verbo en su forma de PASADO:</p>
+        <div class="text-5xl font-black text-indigo-900 py-8 bg-white rounded-xl shadow-sm border-2 border-indigo-100 flex justify-center items-center relative overflow-hidden">
+           ${verb.past}
+           <button onclick="playAudio('${verb.past}')" class="text-indigo-400 hover:text-indigo-600 absolute right-4 top-4"><i data-lucide="volume-2" class="w-6 h-6"></i></button>
+           ${s.feedback === 'correct' ? `<div class="absolute inset-0 bg-emerald-500 text-white flex items-center justify-center animate-pulse"><i data-lucide="check-circle-2" class="w-12 h-12"></i></div>` : ''}
+           ${s.feedback === 'incorrect' ? `<div class="absolute inset-0 bg-rose-500 text-white flex items-center justify-center animate-pulse"><i data-lucide="x-circle" class="w-12 h-12"></i></div>` : ''}
+        </div>
+        <p class="text-slate-400 mt-2">Forma base: ${verb.present} (${verb.spanish})</p>
+      </div>
+      <div class="grid grid-cols-2 gap-4">${catButtons}</div>
+    </div>
+  `;
+}
+
+// 6. JUEGO DE MEMORIA (State)
+window.memState = { cards: [], flipped: [], matched: [] };
+window.initMemory = () => {
+  const selected = [...verbsData].sort(() => 0.5 - Math.random()).slice(0, 6);
+  let newCards = [];
+  selected.forEach(v => {
+    const id1 = Math.random().toString(36).substr(2, 9);
+    const id2 = Math.random().toString(36).substr(2, 9);
+    newCards.push({ id: id1, text: v.present, type: 'present', matchId: id2, audio: v.present });
+    newCards.push({ id: id2, text: v.past, type: 'past', matchId: id1, audio: v.past });
+  });
+  window.memState = { cards: newCards.sort(() => 0.5 - Math.random()), flipped: [], matched: [] };
+  renderApp();
+};
+window.memClick = (id) => {
+  let s = window.memState;
+  if (s.flipped.length === 2 || s.flipped.includes(id) || s.matched.includes(id)) return;
+  
+  const card = s.cards.find(c => c.id === id);
+  playAudio(card.audio);
+  s.flipped.push(id);
+  renderApp();
+
+  if (s.flipped.length === 2) {
+    const card1 = s.cards.find(c => c.id === s.flipped[0]);
+    const card2 = s.cards.find(c => c.id === s.flipped[1]);
+    if (card1.matchId === card2.id) {
       setTimeout(() => {
-        setFeedback(null);
-        if (currentIndex < gameVerbs.length - 1) setCurrentIndex(c => c + 1);
-        else setCurrentIndex(-1); // End
-      }, 1500);
+        s.matched.push(card1.id, card2.id);
+        s.flipped = [];
+        updateProgress(15);
+        renderApp();
+      }, 1000);
     } else {
-      setFeedback('incorrect');
-      setTimeout(() => setFeedback(null), 1000);
+      setTimeout(() => { s.flipped = []; renderApp(); }, 1200);
     }
-  };
-
-  if (currentIndex === -1) {
-    return (
-      <div className="text-center animate-fade-in py-20 space-y-6">
-        <Trophy size={64} className="text-yellow-400 mx-auto" />
-        <h2 className="text-3xl font-bold">¡Juego Completado!</h2>
-        <Button onClick={() => setView('menu')} className="mx-auto">Volver al Menú</Button>
-      </div>
-    );
   }
+};
 
-  const verb = gameVerbs[currentIndex];
+function renderMemory() {
+  if (window.memState.cards.length === 0) window.initMemory();
+  const s = window.memState;
+  const isWin = s.cards.length > 0 && s.matched.length === s.cards.length;
 
-  return (
-    <div className="space-y-6 animate-fade-in max-w-2xl mx-auto">
-       <div className="flex items-center justify-between">
-        <Button variant="outline" onClick={() => setView('menu')}><ArrowLeft size={18}/> Menú</Button>
-        <span className="font-bold text-slate-500">Verbo {currentIndex + 1} de {gameVerbs.length}</span>
-      </div>
-
-      <div className="text-center mb-8">
-        <p className="text-slate-500 mb-2">Clasifica el siguiente verbo en su forma de PASADO:</p>
-        <div className="text-5xl font-black text-indigo-900 py-8 bg-white rounded-xl shadow-sm border-2 border-indigo-100 flex justify-center items-center gap-4 relative overflow-hidden">
-           {verb.past}
-           <button onClick={() => playAudio(verb.past)} className="text-indigo-400 hover:text-indigo-600 absolute right-4 top-4">
-              <Volume2 size={24} />
-            </button>
-           {feedback === 'correct' && <div className="absolute inset-0 bg-emerald-500 text-white flex items-center justify-center animate-pulse"><CheckCircle2 size={48}/></div>}
-           {feedback === 'incorrect' && <div className="absolute inset-0 bg-rose-500 text-white flex items-center justify-center animate-pulse"><XCircle size={48}/></div>}
+  let cardsHTML = s.cards.map(card => {
+    const isFlipped = s.flipped.includes(card.id) || s.matched.includes(card.id);
+    return `
+      <div onclick="memClick('${card.id}')" class="relative w-full h-24 sm:h-32 rounded-xl cursor-pointer transform-style-3d card-transition ${isFlipped ? 'rotate-y-180' : ''}">
+        <div class="absolute inset-0 w-full h-full bg-indigo-500 rounded-xl shadow-md flex items-center justify-center backface-hidden ${isFlipped ? 'hidden' : ''}">
+          <i data-lucide="gamepad-2" class="w-8 h-8 text-indigo-300 opacity-50"></i>
         </div>
-        <p className="text-slate-400 mt-2">Forma base: {verb.present} ({verb.spanish})</p>
+        <div class="absolute inset-0 w-full h-full bg-white border-2 border-indigo-200 rounded-xl shadow-md flex items-center justify-center p-2 text-center backface-hidden ${!isFlipped ? 'hidden' : ''}">
+          <span class="font-bold ${card.type === 'present' ? 'text-indigo-600' : 'text-emerald-600'} text-sm sm:text-lg">${card.text}</span>
+        </div>
       </div>
+    `;
+  }).join('');
 
-      <div className="grid grid-cols-2 gap-4">
-        {categories.map(cat => (
-          <button
-            key={cat.id}
-            onClick={() => handleClassify(cat.id)}
-            disabled={feedback !== null}
-            className="bg-white border-2 border-slate-200 p-6 rounded-xl text-xl font-bold text-slate-700 hover:border-indigo-500 hover:bg-indigo-50 hover:text-indigo-700 transition-colors shadow-sm"
-          >
-            {cat.label}
-          </button>
-        ))}
+  return `
+    <div class="space-y-6 animate-fade-in">
+      <div class="flex items-center justify-between">
+        ${getButtonHTML('Menú', "setView('menu')", 'outline', '<i data-lucide="arrow-left" class="w-4 h-4"></i>')}
+        ${getButtonHTML('Reiniciar', "initMemory()", 'outline', '<i data-lucide="refresh-cw" class="w-4 h-4"></i>')}
       </div>
+      <div class="text-center mb-6">
+        <h2 class="text-2xl font-bold">Juego de Memoria</h2>
+        <p class="text-slate-500">Encuentra los pares: Verbo en presente ↔ Verbo en pasado</p>
+      </div>
+      ${isWin ? `
+        <div class="text-center bg-white p-10 rounded-xl shadow-sm border-2 border-emerald-200">
+           <i data-lucide="trophy" class="w-16 h-16 text-yellow-400 mx-auto mb-4 animate-bounce"></i>
+           <h3 class="text-3xl font-bold text-emerald-700 mb-4">¡Excelente memoria!</h3>
+           ${getButtonHTML('Jugar de nuevo', "initMemory()", 'primary', '', 'mx-auto')}
+        </div>
+      ` : `
+        <div class="grid grid-cols-3 sm:grid-cols-4 gap-3 sm:gap-4 max-w-3xl mx-auto perspective-1000">${cardsHTML}</div>
+      `}
     </div>
-  );
+  `;
 }
 
-// 6. JUEGO DE MEMORIA
-function MemoryGame({ setView, updateProgress }) {
-  const [cards, setCards] = useState([]);
-  const [flippedIds, setFlippedIds] = useState([]);
-  const [matchedIds, setMatchedIds] = useState([]);
-
-  // Init game
-  const initGame = useCallback(() => {
-    // Select 6 random verbs
-    const selected = [...verbsData].sort(() => 0.5 - Math.random()).slice(0, 6);
-    let newCards = [];
-    selected.forEach(v => {
-      // Create a pair for each verb (Present - Past)
-      const id1 = Math.random().toString(36).substr(2, 9);
-      const id2 = Math.random().toString(36).substr(2, 9);
-      newCards.push({ id: id1, text: v.present, type: 'present', matchId: id2, audio: v.present });
-      newCards.push({ id: id2, text: v.past, type: 'past', matchId: id1, audio: v.past });
-    });
-    // Shuffle
-    newCards = newCards.sort(() => 0.5 - Math.random());
-    setCards(newCards);
-    setFlippedIds([]);
-    setMatchedIds([]);
-  }, []);
-
-  useEffect(() => {
-    initGame();
-  }, [initGame]);
-
-  const handleCardClick = (card) => {
-    if (flippedIds.length === 2) return;
-    if (flippedIds.includes(card.id) || matchedIds.includes(card.id)) return;
-
-    playAudio(card.audio);
-    const newFlipped = [...flippedIds, card.id];
-    setFlippedIds(newFlipped);
-
-    if (newFlipped.length === 2) {
-      const card1 = cards.find(c => c.id === newFlipped[0]);
-      const card2 = cards.find(c => c.id === newFlipped[1]);
-
-      if (card1.matchId === card2.id) {
-        // Match!
-        setTimeout(() => {
-          setMatchedIds([...matchedIds, card1.id, card2.id]);
-          setFlippedIds([]);
-          updateProgress(15);
-        }, 1000);
-      } else {
-        // No match
-        setTimeout(() => {
-          setFlippedIds([]);
-        }, 1200);
-      }
-    }
-  };
-
-  const isWin = cards.length > 0 && matchedIds.length === cards.length;
-
-  return (
-    <div className="space-y-6 animate-fade-in">
-       <div className="flex items-center justify-between">
-        <Button variant="outline" onClick={() => setView('menu')}><ArrowLeft size={18}/> Menú</Button>
-        <Button variant="outline" onClick={initGame}><RefreshCw size={18} className="mr-2"/> Reiniciar</Button>
-      </div>
-
-      <div className="text-center mb-6">
-        <h2 className="text-2xl font-bold">Juego de Memoria</h2>
-        <p className="text-slate-500">Encuentra los pares: Verbo en presente ↔ Verbo en pasado</p>
-      </div>
-
-      {isWin ? (
-        <div className="text-center bg-white p-10 rounded-xl shadow-sm border-2 border-emerald-200">
-           <Trophy size={64} className="text-yellow-400 mx-auto mb-4 animate-bounce" />
-           <h3 className="text-3xl font-bold text-emerald-700 mb-4">¡Excelente memoria!</h3>
-           <Button onClick={initGame} className="mx-auto">Jugar de nuevo</Button>
-        </div>
-      ) : (
-        <div className="grid grid-cols-3 sm:grid-cols-4 gap-3 sm:gap-4 max-w-3xl mx-auto perspective-1000">
-          {cards.map(card => {
-            const isFlipped = flippedIds.includes(card.id) || matchedIds.includes(card.id);
-            return (
-              <div 
-                key={card.id}
-                onClick={() => handleCardClick(card)}
-                className={`relative w-full h-24 sm:h-32 rounded-xl cursor-pointer transition-transform duration-500 transform-style-3d ${isFlipped ? 'rotate-y-180' : ''}`}
-                style={{ transformStyle: 'preserve-3d', transition: 'transform 0.6s' }}
-              >
-                {/* Front of card (Hidden state) */}
-                <div className={`absolute inset-0 w-full h-full bg-indigo-500 rounded-xl shadow-md flex items-center justify-center backface-hidden ${isFlipped ? 'hidden' : ''}`}>
-                  <Gamepad2 size={32} className="text-indigo-300 opacity-50" />
-                </div>
-                {/* Back of card (Revealed state) */}
-                <div className={`absolute inset-0 w-full h-full bg-white border-2 border-indigo-200 rounded-xl shadow-md flex items-center justify-center p-2 text-center backface-hidden ${!isFlipped ? 'hidden' : ''}`}>
-                  <span className={`font-bold ${card.type === 'present' ? 'text-indigo-600' : 'text-emerald-600'} text-sm sm:text-lg`}>
-                    {card.text}
-                  </span>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// 7. QUIZ
-function Quiz({ setView, updateProgress }) {
-  const quizData = [
-    { q: '¿Cuál es el pasado de "go"?', options: ['goed', 'went', 'gone', 'going'], a: 'went' },
-    { q: '¿Cómo se pronuncia la terminación -ed en "watched"?', options: ['/id/', '/d/', '/t/', 'muda'], a: '/t/' },
-    { q: '¿Es correcta esta oración? "He did not played soccer."', options: ['Sí, es correcta.', 'No, debería ser "He did not play".'], a: 'No, debería ser "He did not play".' },
-    { q: '¿Cuál verbo es regular?', options: ['buy', 'eat', 'study', 'see'], a: 'study' },
-    { q: 'Completa: Did you ______ the movie?', options: ['enjoy', 'enjoyed', 'enjoys', 'enjoying'], a: 'enjoy' }
-  ];
-
-  const [currentQ, setCurrentQ] = useState(0);
-  const [score, setScore] = useState(0);
-  const [showResult, setShowResult] = useState(false);
-
-  const handleAnswer = (opt) => {
-    if (opt === quizData[currentQ].a) {
-      setScore(s => s + 1);
-      updateProgress(20);
-    }
-    
-    if (currentQ < quizData.length - 1) {
-      setCurrentQ(c => c + 1);
-    } else {
-      setShowResult(true);
-    }
-  };
-
-  if (showResult) {
-    return (
-      <div className="text-center animate-fade-in max-w-md mx-auto bg-white p-8 rounded-xl shadow-md">
-        <BrainCircuit size={64} className="text-indigo-500 mx-auto mb-4" />
-        <h2 className="text-3xl font-bold mb-2">Quiz Terminado</h2>
-        <p className="text-xl text-slate-600 mb-6">Tu puntuación: <span className="font-bold text-indigo-600">{score} / {quizData.length}</span></p>
-        <Button onClick={() => setView('menu')} className="w-full">Volver al Menú</Button>
-      </div>
-    );
+// 7. QUIZ (State)
+const quizData = [
+  { q: '¿Cuál es el pasado de "go"?', options: ['goed', 'went', 'gone', 'going'], a: 'went' },
+  { q: '¿Cómo se pronuncia la terminación -ed en "watched"?', options: ['/id/', '/d/', '/t/', 'muda'], a: '/t/' },
+  { q: '¿Es correcta esta oración? "He did not played soccer."', options: ['Sí, es correcta.', 'No, debería ser "He did not play".'], a: 'No, debería ser "He did not play".' },
+  { q: '¿Cuál verbo es regular?', options: ['buy', 'eat', 'study', 'see'], a: 'study' },
+  { q: 'Completa: Did you ______ the movie?', options: ['enjoy', 'enjoyed', 'enjoys', 'enjoying'], a: 'enjoy' }
+];
+window.quizState = { currentQ: 0, score: 0, showResult: false };
+window.quizAnswer = (opt) => {
+  if (opt === quizData[window.quizState.currentQ].a) {
+    window.quizState.score++;
+    updateProgress(20);
   }
+  if (window.quizState.currentQ < quizData.length - 1) window.quizState.currentQ++;
+  else window.quizState.showResult = true;
+  renderApp();
+};
 
-  return (
-    <div className="space-y-6 animate-fade-in max-w-2xl mx-auto">
-       <div className="flex items-center justify-between">
-        <Button variant="outline" onClick={() => setView('menu')}><ArrowLeft size={18}/> Menú</Button>
-        <span className="font-bold text-slate-500">Pregunta {currentQ + 1} de {quizData.length}</span>
-      </div>
-
-      <Card className="p-8">
-        <h3 className="text-2xl font-semibold mb-8 text-slate-800">{quizData[currentQ].q}</h3>
-        <div className="space-y-3">
-          {quizData[currentQ].options.map(opt => (
-            <button
-              key={opt}
-              onClick={() => handleAnswer(opt)}
-              className="w-full text-left p-4 rounded-lg border-2 border-slate-200 hover:border-indigo-500 hover:bg-indigo-50 font-medium text-lg transition-colors"
-            >
-              {opt}
-            </button>
-          ))}
-        </div>
-      </Card>
+function renderQuiz() {
+  const s = window.quizState;
+  if (s.showResult) return `
+    <div class="text-center animate-fade-in max-w-md mx-auto bg-white p-8 rounded-xl shadow-md">
+      <i data-lucide="brain-circuit" class="w-16 h-16 text-indigo-500 mx-auto mb-4"></i>
+      <h2 class="text-3xl font-bold mb-2">Quiz Terminado</h2>
+      <p class="text-xl text-slate-600 mb-6">Tu puntuación: <span class="font-bold text-indigo-600">${s.score} / ${quizData.length}</span></p>
+      ${getButtonHTML('Volver al Menú', "setView('menu')", 'primary', '', 'w-full')}
     </div>
-  );
+  `;
+
+  let optionsHTML = quizData[s.currentQ].options.map(opt => `
+    <button onclick="quizAnswer('${opt}')" class="w-full text-left p-4 rounded-lg border-2 border-slate-200 hover:border-indigo-500 hover:bg-indigo-50 font-medium text-lg transition-colors">
+      ${opt}
+    </button>
+  `).join('');
+
+  return `
+    <div class="space-y-6 animate-fade-in max-w-2xl mx-auto">
+      <div class="flex items-center justify-between">
+        ${getButtonHTML('Menú', "setView('menu')", 'outline', '<i data-lucide="arrow-left" class="w-4 h-4"></i>')}
+        <span class="font-bold text-slate-500">Pregunta ${s.currentQ + 1} de ${quizData.length}</span>
+      </div>
+      <div class="bg-white p-8 rounded-xl shadow-sm border border-gray-100">
+        <h3 class="text-2xl font-semibold mb-8 text-slate-800">${quizData[s.currentQ].q}</h3>
+        <div class="space-y-3">${optionsHTML}</div>
+      </div>
+    </div>
+  `;
 }
 
-// 8. MODO HISTORIA
-function StoryMode({ setView }) {
+// 8. MODO HISTORIA (State)
+window.storyState = { activeLine: null };
+window.storyClick = (i, text) => {
+  window.storyState.activeLine = window.storyState.activeLine === i ? null : i;
+  if (window.storyState.activeLine === i) playAudio(text);
+  renderApp();
+};
+
+function renderStory() {
   const story = [
     { eng: "Manolo loved María.", esp: "Manolo amaba a María.", verb: "loved", base: "love", type: "regular", sound: "d" },
     { eng: "Joaquín protected the town.", esp: "Joaquín protegió el pueblo.", verb: "protected", base: "protect", type: "regular", sound: "id" },
@@ -853,92 +692,127 @@ function StoryMode({ setView }) {
     { eng: "Manolo sang to the bull.", esp: "Manolo le cantó al toro.", verb: "sang", base: "sing", type: "irregular" }
   ];
 
-  const [activeLine, setActiveLine] = useState(null);
-
-  return (
-    <div className="space-y-6 animate-fade-in max-w-3xl mx-auto">
-      <div className="flex items-center justify-between">
-        <Button variant="outline" onClick={() => setView('menu')}><ArrowLeft size={18}/> Menú</Button>
-        <h2 className="text-2xl font-bold flex items-center gap-2"><Film className="text-indigo-500"/> The Book of Life</h2>
-      </div>
-
-      <div className="bg-white p-6 rounded-xl shadow-sm space-y-4">
-        <p className="text-slate-500 mb-4">Lee la historia. Haz clic en cada frase para escucharla y ver la explicación del verbo.</p>
-        
-        {story.map((line, i) => (
-          <div 
-            key={i} 
-            className={`p-4 rounded-lg border-l-4 cursor-pointer transition-all ${activeLine === i ? 'bg-indigo-50 border-indigo-500 shadow-sm' : 'bg-slate-50 border-slate-300 hover:bg-slate-100'}`}
-            onClick={() => {
-              setActiveLine(activeLine === i ? null : i);
-              if (activeLine !== i) playAudio(line.eng);
-            }}
-          >
-            <div className="flex justify-between items-center">
-              <p className="text-lg sm:text-xl font-bold text-slate-800">{line.eng}</p>
-              <Volume2 size={20} className={activeLine === i ? "text-indigo-600" : "text-slate-400"} />
+  let linesHTML = story.map((line, i) => {
+    const isActive = window.storyState.activeLine === i;
+    return `
+      <div onclick="storyClick(${i}, '${line.eng}')" class="p-4 rounded-lg border-l-4 cursor-pointer transition-all ${isActive ? 'bg-indigo-50 border-indigo-500 shadow-sm' : 'bg-slate-50 border-slate-300 hover:bg-slate-100'}">
+        <div class="flex justify-between items-center">
+          <p class="text-lg sm:text-xl font-bold text-slate-800">${line.eng}</p>
+          <i data-lucide="volume-2" class="${isActive ? "text-indigo-600" : "text-slate-400"} w-5 h-5"></i>
+        </div>
+        ${isActive ? `
+          <div class="mt-4 pt-4 border-t border-indigo-100 text-sm sm:text-base">
+            <p class="text-slate-600 mb-2 font-medium">🇪🇸 Traducción: <span class="font-normal">${line.esp}</span></p>
+            <div class="bg-white p-3 rounded border text-slate-700">
+              <span class="font-bold text-indigo-700">${line.verb}</span> es el pasado de <strong>${line.base}</strong>.<br/>
+              Es un verbo <span class="font-semibold">${line.type}</span>
+              ${line.type === 'regular' ? `, y su terminación -ed suena como <strong>/${line.sound}/</strong>.` : ''}
             </div>
-            
-            {activeLine === i && (
-              <div className="mt-4 pt-4 border-t border-indigo-100 text-sm sm:text-base">
-                <p className="text-slate-600 mb-2 font-medium">🇪🇸 Traducción: <span className="font-normal">{line.esp}</span></p>
-                <div className="bg-white p-3 rounded border text-slate-700">
-                  <span className="font-bold text-indigo-700">{line.verb}</span> es el pasado de <strong>{line.base}</strong>. 
-                  <br/>
-                  Es un verbo <span className="font-semibold">{line.type}</span>
-                  {line.type === 'regular' && <span>, y su terminación -ed suena como <strong>/{line.sound}/</strong>.</span>}
-                </div>
-              </div>
-            )}
           </div>
-        ))}
+        ` : ''}
+      </div>
+    `;
+  }).join('');
+
+  return `
+    <div class="space-y-6 animate-fade-in max-w-3xl mx-auto">
+      <div class="flex items-center justify-between">
+        ${getButtonHTML('Menú', "setView('menu')", 'outline', '<i data-lucide="arrow-left" class="w-4 h-4"></i>')}
+        <h2 class="text-2xl font-bold flex items-center gap-2"><i data-lucide="film" class="w-6 h-6 text-indigo-500"></i> The Book of Life</h2>
+      </div>
+      <div class="bg-white p-6 rounded-xl shadow-sm space-y-4">
+        <p class="text-slate-500 mb-4">Lee la historia. Haz clic en cada frase para escucharla y ver la explicación del verbo.</p>
+        ${linesHTML}
       </div>
     </div>
-  );
+  `;
 }
 
 // 9. PROGRESO
-function ProgressView({ setView, progress }) {
-  // Determine level
+function renderProgress() {
   const level = progress.points < 100 ? 'Principiante' : progress.points < 300 ? 'Intermedio' : 'Experto';
   const progressPercent = Math.min((progress.points % 100), 100);
 
-  return (
-    <div className="space-y-6 animate-fade-in max-w-2xl mx-auto">
-      <div className="flex items-center justify-between">
-        <Button variant="outline" onClick={() => setView('menu')}><ArrowLeft size={18}/> Menú</Button>
-        <h2 className="text-2xl font-bold text-slate-800">Mi Progreso</h2>
+  return `
+    <div class="space-y-6 animate-fade-in max-w-2xl mx-auto">
+      <div class="flex items-center justify-between">
+        ${getButtonHTML('Menú', "setView('menu')", 'outline', '<i data-lucide="arrow-left" class="w-4 h-4"></i>')}
+        <h2 class="text-2xl font-bold text-slate-800">Mi Progreso</h2>
       </div>
-
-      <Card className="text-center p-8 bg-gradient-to-br from-indigo-500 to-purple-600 text-white border-0">
-        <Trophy size={80} className="mx-auto text-yellow-300 mb-4 drop-shadow-md" />
-        <h3 className="text-3xl font-black mb-2">{progress.points} Puntos Totales</h3>
-        <p className="text-indigo-100 text-lg">Nivel Actual: <span className="font-bold">{level}</span></p>
-        
-        <div className="mt-8 bg-white/20 rounded-full h-4 overflow-hidden relative">
-          <div className="bg-yellow-400 h-full transition-all duration-1000" style={{ width: `${progressPercent}%` }}></div>
+      <div class="text-center p-8 bg-gradient-to-br from-indigo-500 to-purple-600 text-white rounded-xl shadow-sm">
+        <i data-lucide="trophy" class="w-20 h-20 mx-auto text-yellow-300 mb-4 drop-shadow-md"></i>
+        <h3 class="text-3xl font-black mb-2">${progress.points} Puntos Totales</h3>
+        <p class="text-indigo-100 text-lg">Nivel Actual: <span class="font-bold">${level}</span></p>
+        <div class="mt-8 bg-white/20 rounded-full h-4 overflow-hidden relative">
+          <div class="bg-yellow-400 h-full transition-all duration-1000" style="width: ${progressPercent}%"></div>
         </div>
-        <p className="text-xs text-indigo-200 mt-2 text-right">{progressPercent}/100 para el próximo nivel</p>
-      </Card>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <Card className="flex items-center gap-4">
-          <div className="p-3 bg-emerald-100 text-emerald-600 rounded-full"><BrainCircuit size={24}/></div>
-          <div>
-            <p className="text-sm text-slate-500 font-bold">Actividades Completadas</p>
-            <p className="text-2xl font-black text-slate-800">{Math.floor(progress.points / 15)}</p>
-          </div>
-        </Card>
-        <Card className="flex items-center gap-4">
-          <div className="p-3 bg-orange-100 text-orange-600 rounded-full"><BookOpen size={24}/></div>
-          <div>
-            <p className="text-sm text-slate-500 font-bold">Verbos en la base</p>
-            <p className="text-2xl font-black text-slate-800">{verbsData.length}</p>
-          </div>
-        </Card>
+        <p class="text-xs text-indigo-200 mt-2 text-right">${progressPercent}/100 para el próximo nivel</p>
       </div>
-      
-      <p className="text-center text-slate-400 text-sm mt-8">El progreso se guarda automáticamente en tu navegador.</p>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex items-center gap-4">
+          <div class="p-3 bg-emerald-100 text-emerald-600 rounded-full"><i data-lucide="brain-circuit" class="w-6 h-6"></i></div>
+          <div>
+            <p class="text-sm text-slate-500 font-bold">Actividades Completadas</p>
+            <p class="text-2xl font-black text-slate-800">${Math.floor(progress.points / 15)}</p>
+          </div>
+        </div>
+        <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex items-center gap-4">
+          <div class="p-3 bg-orange-100 text-orange-600 rounded-full"><i data-lucide="book-open" class="w-6 h-6"></i></div>
+          <div>
+            <p class="text-sm text-slate-500 font-bold">Verbos en la base</p>
+            <p class="text-2xl font-black text-slate-800">${verbsData.length}</p>
+          </div>
+        </div>
+      </div>
+      <p class="text-center text-slate-400 text-sm mt-8">El progreso se guarda automáticamente en tu navegador.</p>
     </div>
-  );
+  `;
 }
+
+// --- RENDERIZADO PRINCIPAL ---
+function renderApp() {
+  const appContainer = document.getElementById('app');
+  let viewHTML = '';
+
+  switch (currentView) {
+    case 'menu': viewHTML = renderMenu(); break;
+    case 'learn': viewHTML = renderLearn(); break;
+    case 'pronunciation': viewHTML = renderPronunciation(); break;
+    case 'sentences': viewHTML = renderSentences(); break;
+    case 'fillBlanks': viewHTML = renderFillBlanks(); break;
+    case 'classify': viewHTML = renderClassify(); break;
+    case 'memory': viewHTML = renderMemory(); break;
+    case 'quiz': viewHTML = renderQuiz(); break;
+    case 'story': viewHTML = renderStory(); break;
+    case 'progress': viewHTML = renderProgress(); break;
+    default: viewHTML = renderMenu(); break;
+  }
+
+  appContainer.innerHTML = `
+    <header class="bg-indigo-600 text-white p-4 shadow-md sticky top-0 z-10">
+      <div class="max-w-5xl mx-auto flex justify-between items-center">
+        <div class="flex items-center gap-2 font-bold text-xl cursor-pointer" onclick="setView('menu')">
+          <i data-lucide="book-open" class="w-6 h-6"></i>
+          <span>VerbMaster English II</span>
+        </div>
+        <div class="flex items-center gap-2 bg-indigo-800 px-3 py-1 rounded-full text-sm font-medium">
+          <i data-lucide="trophy" class="w-4 h-4 text-yellow-400"></i>
+          <span id="header-points">${progress.points} pts</span>
+        </div>
+      </div>
+    </header>
+    <main class="max-w-5xl mx-auto p-4 sm:p-6 pb-20" id="main-content">
+      ${viewHTML}
+    </main>
+  `;
+
+  // Inicializar iconos de Lucide
+  lucide.createIcons();
+}
+
+// Inicializar la aplicación al cargar la página
+window.onload = renderApp;
+
+</script>
+</body>
+</html>
