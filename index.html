@@ -420,8 +420,9 @@ const randomItem = (arr) => {
     return arr[Math.floor(Math.random() * arr.length)];
 };
 
+// Modificado ligeramente para manejar apóstrofos con más solidez en las respuestas de repaso
 const normalize = (s) => {
-    return s.trim().toLowerCase().replace(/[.!?]/g, "");
+    return s.trim().toLowerCase().replace(/[.!?,'’]/g, "");
 };
 
 // ==========================================
@@ -454,6 +455,10 @@ let practiceTableAnswers = {};
 let practiceTableResults = {};
 let practiceTableRandomMask = [];
 
+// Estados NUEVOS para el Repaso Interactivo
+window.reviewAnswers = {};
+window.reviewResults = {};
+
 
 // --- NUEVO: ESTADO DE LA TABLA DE CALIFICACIONES (LEADERBOARD) ---
 let leaderBoard = [
@@ -482,7 +487,8 @@ window.getTotalScore = () => {
     let originalScore = gameState.challenges ? gameState.challenges.filter(c => c.result === 'ok').length : 0;
     let proScore = proGameState.challenges ? proGameState.challenges.filter(c => c.result === 'ok').length : 0;
     let tableScore = Object.values(practiceTableResults).filter(res => res === 'ok').length;
-    return originalScore + proScore + tableScore;
+    let reviewScore = Object.values(window.reviewResults).filter(res => res === 'ok').length;
+    return originalScore + proScore + tableScore + reviewScore;
 };
 
 window.saveScore = () => {
@@ -747,6 +753,27 @@ window.pickProGame = (id, choice) => {
     renderApp();
 };
 
+// Logica Interactiva para Preguntas de Repaso
+window.updateReview = (id, val) => {
+    window.reviewAnswers[id] = val;
+    window.reviewResults[id] = null;
+};
+
+window.checkReview = (id, expectedOptionsString) => {
+    let inputVal = normalize(window.reviewAnswers[id] || '');
+    let options = expectedOptionsString.split('|').map(normalize);
+    
+    if (inputVal === '') {
+        window.reviewResults[id] = null;
+    } else if (options.includes(inputVal)) {
+        window.reviewResults[id] = 'ok';
+    } else {
+        window.reviewResults[id] = 'bad';
+    }
+    renderApp();
+};
+
+
 // ==========================================
 // 5. FUNCIONES DE RENDERIZADO (Componentes)
 // ==========================================
@@ -826,7 +853,7 @@ function renderTabs() {
         { id: 'games', label: 'Games (50)' },
         { id: 'pro-games', label: '100 Pro Challenges' },
         { id: 'practice-table', label: 'Practica el verbo' },
-        { id: 'review', label: 'Preguntas de repaso' } // NUEVA PESTAÑA
+        { id: 'review', label: 'Preguntas de repaso' } 
     ];
     
     let tabsHTML = '';
@@ -856,7 +883,6 @@ function renderTabs() {
     `;
 }
 
-// ... Funciones de renderizado de pestañas anteriores ...
 function renderLearn() {
     const filtered = verbs.filter(v => {
         const searchText = `${v.base} ${v.past} ${v.es} ${v.sound}`.toLowerCase();
@@ -1031,7 +1057,6 @@ function renderMovieMode() {
     return `<div class="grid gap-3 animate-fade-in"><div class="card p-5"><h2 class="flex items-center text-xl font-bold"><i data-lucide="film" class="mr-2 h-5 w-5"></i> Practice with The Book of Life</h2><p class="mt-2 text-sm text-slate-600">Frases cortas para practicar el speaking con acciones claras en pasado.</p></div><div class="grid gap-3 md:grid-cols-2">${cardsHTML}</div></div>`;
 }
 
-// ... Funciones de los 50 y 100 Juegos ...
 function renderFillCard(ch) {
     const fInfo = getVerbInfo(ch.item), correctPastTarget = fInfo.past || ch.item.custom?.past;
     const regex = new RegExp("\\b" + correctPastTarget + "\\b", "i"), fBlank = ch.item.past.replace(regex, "______");
@@ -1124,8 +1149,28 @@ function renderPracticeTable() {
 }
 
 // ==========================================
-// NUEVA SECCIÓN: PREGUNTAS DE REPASO
+// NUEVA SECCIÓN: PREGUNTAS DE REPASO CON INPUTS
 // ==========================================
+
+// Helper para crear inputs dinámicos en las frases (fill in the blanks)
+function rInput(id, expectedOptionsString, customWidth = 'w-24') {
+    let val = window.reviewAnswers[id] || '';
+    let res = window.reviewResults[id];
+    
+    let classes = `input inline-block h-8 px-2 mx-1 text-center font-bold border-b-2 border-t-0 border-l-0 border-r-0 rounded-none focus:ring-0 shadow-none transition-colors ${customWidth}`;
+    
+    if (res === 'ok') classes += " border-green-500 text-green-700 bg-green-50";
+    else if (res === 'bad') classes += " border-red-500 text-red-700 bg-red-50";
+    else classes += " border-slate-400 bg-slate-50 text-slate-800";
+
+    let safeExpected = expectedOptionsString.replace(/'/g, "\\'");
+    
+    return `<input type="text" class="${classes}" value="${val}" 
+                oninput="updateReview('${id}', this.value)" 
+                onblur="checkReview('${id}', '${safeExpected}')" 
+                onkeyup="if(event.key==='Enter') checkReview('${id}', '${safeExpected}')" 
+                placeholder="..." autocomplete="off" spellcheck="false" />`;
+}
 
 function renderReviewQuestions() {
     const listClass = "bg-slate-50 p-4 rounded-xl border border-slate-200 shadow-sm";
@@ -1138,17 +1183,187 @@ function renderReviewQuestions() {
                     <i data-lucide="book-check" class="mr-3 h-6 w-6"></i> Guía y Preguntas de Repaso
                 </h2>
                 <p class="text-rose-100 text-sm">
-                    Aquí encontrarás ejercicios resueltos y todas las explicaciones gramaticales detalladas para dominar el Pasado Simple (was/were, regulares, irregulares, negativas e interrogativas).
+                    Aquí encontrarás ejercicios interactivos para practicar y, más abajo, todas las explicaciones gramaticales detalladas para dominar el Pasado Simple.
                 </p>
+            </div>
+
+            <!-- SECCIÓN INTERACTIVA: PON A PRUEBA TU CONOCIMIENTO -->
+            <div class="card p-6 border-2 border-rose-200 shadow-md">
+                <h3 class="text-xl font-black text-rose-700 flex items-center mb-6">
+                    <i data-lucide="pencil" class="mr-2 h-6 w-6"></i> 📝 ¡Pon a prueba tu conocimiento!
+                </h3>
+                <p class="text-sm text-slate-600 mb-6 font-medium">Completa los espacios. El sistema se pondrá <b class="text-green-600">verde</b> si es correcto o <b class="text-red-500">rojo</b> si hay un error al presionar "Enter" o salir de la casilla.</p>
+
+                <div class="grid lg:grid-cols-2 gap-8">
+                    <!-- A) WAS / WERE -->
+                    <div>
+                        <h4 class="font-bold text-lg text-slate-800 mb-3 bg-slate-100 p-2 rounded">A) Affirmative form: was / were</h4>
+                        <ul class="space-y-4 text-slate-700">
+                            <li>1. John ${rInput('A1', 'was')} at home last week.</li>
+                            <li>2. They ${rInput('A2', 'were')} at the cinema yesterday.</li>
+                            <li>3. Your parents ${rInput('A3', 'were')} at the station at nine o’clock.</li>
+                            <li>4. Mary ${rInput('A4', 'was')} in the street this morning.</li>
+                            <li>5. My aunt ${rInput('A5', 'was')} in hospital yesterday morning.</li>
+                            <li>6. I ${rInput('A6', 'was')} at school this morning.</li>
+                            <li>7. Jill and Kevin ${rInput('A7', 'were')} at the zoo last Sunday.</li>
+                            <li>8. We ${rInput('A8', 'were')} in a Chinese restaurant last night.</li>
+                        </ul>
+                    </div>
+
+                    <!-- B) IRREGULAR VERBS -->
+                    <div>
+                        <h4 class="font-bold text-lg text-slate-800 mb-3 bg-slate-100 p-2 rounded">B) Irregular verbs</h4>
+                        <ul class="space-y-4 text-slate-700">
+                            <li>1. I (eat) ${rInput('B1', 'ate')} dinner at six o’clock yesterday.</li>
+                            <li>2. Helen (drive) ${rInput('B2', 'drove')} to work yesterday in the morning.</li>
+                            <li>3. My neighbor (buy) ${rInput('B3', 'bought')} a new car last week.</li>
+                            <li>4. They (go) ${rInput('B4', 'went')} to Italy on their last summer holiday.</li>
+                            <li>5. A: ${rInput('B5a', 'did')} they (swim) ${rInput('B5b', 'swim')} at the beach? B: No, they ${rInput('B5c', 'did not|didn\'t|didnt', 'w-20')}.</li>
+                            <li>6. My family and I (see) ${rInput('B6', 'saw')} a comedy movie last night.</li>
+                            <li>7. First, we (do) ${rInput('B7a', 'did')} exercise, and then we (drink) ${rInput('B7b', 'drank')} some water.</li>
+                            <li>8. Suddenly, the animal jumped and (bite) ${rInput('B8', 'bit')} my hand.</li>
+                            <li>9. I (get up) ${rInput('B9', 'got up')} early this morning.</li>
+                            <li>10. The Wright brothers (fly) ${rInput('B10', 'flew')} the first airplane in 1903.</li>
+                            <li>11. I think I (hear) ${rInput('B11', 'heard')} a strange sound outside the door one minute ago.</li>
+                            <li>12. When I was ten years old, I (break) ${rInput('B12a', 'broke')} my arm. It really (hurt) ${rInput('B12b', 'hurt')}.</li>
+                            <li>13. The police (catch) ${rInput('B13', 'caught')} all three of the bank robbers last week.</li>
+                            <li>14. You (read) ${rInput('B14', 'read')} that book when you were a child.</li>
+                            <li>15. Unfortunately, I (forget) ${rInput('B15', 'forgot')} to bring my money.</li>
+                        </ul>
+                    </div>
+
+                    <!-- C) REGULAR VERBS -->
+                    <div>
+                        <h4 class="font-bold text-lg text-slate-800 mb-3 bg-slate-100 p-2 rounded">C) Regular verbs</h4>
+                        <ul class="space-y-4 text-slate-700">
+                            <li>1. I (walk) ${rInput('C1', 'walked')} home after work yesterday.</li>
+                            <li>2. The children (play) ${rInput('C2', 'played')} in the park last Sunday.</li>
+                            <li>3. The people (wait) ${rInput('C3', 'waited')} two hours for a bus.</li>
+                            <li>4. I (like) ${rInput('C4', 'liked')} the party last night. It was fun.</li>
+                            <li>5. Everybody (laugh) ${rInput('C5', 'laughed')}. It was a funny joke.</li>
+                            <li>6. We (pass) ${rInput('C6', 'passed')} Seville University on the bus. It was very elegant.</li>
+                            <li>7. The train (stop) ${rInput('C7', 'stopped')} at the station for ten minutes.</li>
+                            <li>8. John is a bad student. He (copy) ${rInput('C8', 'copied')} my English exam yesterday.</li>
+                            <li>9. At the end of the song all the people (clap) ${rInput('C9', 'clapped')}.</li>
+                            <li>10. We (carry) ${rInput('C10', 'carried')} the suitcases from the airport to the hotel.</li>
+                        </ul>
+                    </div>
+
+                    <!-- D) NEGATIVE FORM -->
+                    <div>
+                        <h4 class="font-bold text-lg text-slate-800 mb-3 bg-slate-100 p-2 rounded">D) Negative form (Write full sentences)</h4>
+                        <ul class="space-y-4 text-slate-700">
+                            <li class="bg-slate-50 p-2 rounded border">
+                                <div class="mb-1 text-sm font-medium">1. Mum was at home this morning.</div>
+                                ${rInput('D1', 'mum was not at home this morning|mum wasn\'t at home this morning|mum wasnt at home this morning', 'w-full !mx-0 !border-2 !border-slate-200 !rounded-md h-10')}
+                            </li>
+                            <li class="bg-slate-50 p-2 rounded border">
+                                <div class="mb-1 text-sm font-medium">2. Paul and Mary were in the shop.</div>
+                                ${rInput('D2', 'paul and mary were not in the shop|paul and mary weren\'t in the shop|paul and mary werent in the shop', 'w-full !mx-0 !border-2 !border-slate-200 !rounded-md h-10')}
+                            </li>
+                            <li class="bg-slate-50 p-2 rounded border">
+                                <div class="mb-1 text-sm font-medium">3. His friends were very happy yesterday afternoon.</div>
+                                ${rInput('D3', 'his friends were not very happy yesterday afternoon|his friends weren\'t very happy yesterday afternoon|his friends werent very happy yesterday afternoon', 'w-full !mx-0 !border-2 !border-slate-200 !rounded-md h-10')}
+                            </li>
+                            <li class="bg-slate-50 p-2 rounded border">
+                                <div class="mb-1 text-sm font-medium">4. I was late for the cinema.</div>
+                                ${rInput('D4', 'i was not late for the cinema|i wasn\'t late for the cinema|i wasnt late for the cinema', 'w-full !mx-0 !border-2 !border-slate-200 !rounded-md h-10')}
+                            </li>
+                            <li class="bg-slate-50 p-2 rounded border">
+                                <div class="mb-1 text-sm font-medium">5. We were at home to watch a film on TV.</div>
+                                ${rInput('D5', 'we were not at home to watch a film on tv|we weren\'t at home to watch a film on tv|we werent at home to watch a film on tv', 'w-full !mx-0 !border-2 !border-slate-200 !rounded-md h-10')}
+                            </li>
+                        </ul>
+                    </div>
+
+                    <!-- E) INTERROGATIVE FORM -->
+                    <div class="lg:col-span-2">
+                        <h4 class="font-bold text-lg text-slate-800 mb-3 bg-slate-100 p-2 rounded">E) Interrogative form (Write full sentences)</h4>
+                        <ul class="grid md:grid-cols-2 gap-4 text-slate-700">
+                            <li class="bg-slate-50 p-2 rounded border">
+                                <div class="mb-1 text-sm font-medium">1. I / see you last week?</div>
+                                ${rInput('E1', 'did i see you last week|did i see you last week?', 'w-full !mx-0 !border-2 !border-slate-200 !rounded-md h-9')}
+                            </li>
+                            <li class="bg-slate-50 p-2 rounded border">
+                                <div class="mb-1 text-sm font-medium">2. you / meet your father yesterday?</div>
+                                ${rInput('E2', 'did you meet your father yesterday|did you meet your father yesterday?', 'w-full !mx-0 !border-2 !border-slate-200 !rounded-md h-9')}
+                            </li>
+                            <li class="bg-slate-50 p-2 rounded border">
+                                <div class="mb-1 text-sm font-medium">3. we / go to Spain in June?</div>
+                                ${rInput('E3', 'did we go to spain in june|did we go to spain in june?', 'w-full !mx-0 !border-2 !border-slate-200 !rounded-md h-9')}
+                            </li>
+                            <li class="bg-slate-50 p-2 rounded border">
+                                <div class="mb-1 text-sm font-medium">4. it / snow last winter?</div>
+                                ${rInput('E4', 'did it snow last winter|did it snow last winter?', 'w-full !mx-0 !border-2 !border-slate-200 !rounded-md h-9')}
+                            </li>
+                            <li class="bg-slate-50 p-2 rounded border">
+                                <div class="mb-1 text-sm font-medium">5. they / stay last night?</div>
+                                ${rInput('E5', 'did they stay last night|did they stay last night?', 'w-full !mx-0 !border-2 !border-slate-200 !rounded-md h-9')}
+                            </li>
+                            <li class="bg-slate-50 p-2 rounded border">
+                                <div class="mb-1 text-sm font-medium">6. Julie / watch a film on Saturday?</div>
+                                ${rInput('E6', 'did julie watch a film on saturday|did julie watch a film on saturday?', 'w-full !mx-0 !border-2 !border-slate-200 !rounded-md h-9')}
+                            </li>
+                            <li class="bg-slate-50 p-2 rounded border">
+                                <div class="mb-1 text-sm font-medium">7. Lucy / pass the exam?</div>
+                                ${rInput('E7', 'did lucy pass the exam|did lucy pass the exam?', 'w-full !mx-0 !border-2 !border-slate-200 !rounded-md h-9')}
+                            </li>
+                            <li class="bg-slate-50 p-2 rounded border">
+                                <div class="mb-1 text-sm font-medium">8. you / have fun at the party?</div>
+                                ${rInput('E8', 'did you have fun at the party|did you have fun at the party?', 'w-full !mx-0 !border-2 !border-slate-200 !rounded-md h-9')}
+                            </li>
+                            <li class="bg-slate-50 p-2 rounded border">
+                                <div class="mb-1 text-sm font-medium">9. I / lock the door?</div>
+                                ${rInput('E9', 'did i lock the door|did i lock the door?', 'w-full !mx-0 !border-2 !border-slate-200 !rounded-md h-9')}
+                            </li>
+                            <li class="bg-slate-50 p-2 rounded border">
+                                <div class="mb-1 text-sm font-medium">10. Sally and Victoria / go to a café at lunchtime?</div>
+                                ${rInput('E10', 'did sally and victoria go to a cafe at lunchtime|did sally and victoria go to a café at lunchtime|did sally and victoria go to a cafe at lunchtime?|did sally and victoria go to a café at lunchtime?', 'w-full !mx-0 !border-2 !border-slate-200 !rounded-md h-9')}
+                            </li>
+                            <li class="bg-slate-50 p-2 rounded border">
+                                <div class="mb-1 text-sm font-medium">11. we / meet in 1997?</div>
+                                ${rInput('E11', 'did we meet in 1997|did we meet in 1997?', 'w-full !mx-0 !border-2 !border-slate-200 !rounded-md h-9')}
+                            </li>
+                            <li class="bg-slate-50 p-2 rounded border">
+                                <div class="mb-1 text-sm font-medium">12. the film / start on time?</div>
+                                ${rInput('E12', 'did the film start on time|did the film start on time?', 'w-full !mx-0 !border-2 !border-slate-200 !rounded-md h-9')}
+                            </li>
+                            <li class="bg-slate-50 p-2 rounded border">
+                                <div class="mb-1 text-sm font-medium">13. they / cook dinner?</div>
+                                ${rInput('E13', 'did they cook dinner|did they cook dinner?', 'w-full !mx-0 !border-2 !border-slate-200 !rounded-md h-9')}
+                            </li>
+                            <li class="bg-slate-50 p-2 rounded border">
+                                <div class="mb-1 text-sm font-medium">14. it / rain a lot on your holiday?</div>
+                                ${rInput('E14', 'did it rain a lot on your holiday|did it rain a lot on your holiday?', 'w-full !mx-0 !border-2 !border-slate-200 !rounded-md h-9')}
+                            </li>
+                            <li class="bg-slate-50 p-2 rounded border">
+                                <div class="mb-1 text-sm font-medium">15. you / feel okay on the first day of your new job?</div>
+                                ${rInput('E15', 'did you feel okay on the first day of your new job|did you feel okay on the first day of your new job?', 'w-full !mx-0 !border-2 !border-slate-200 !rounded-md h-9')}
+                            </li>
+                        </ul>
+                    </div>
+
+                    <!-- F) WRITE A PARAGRAPH -->
+                    <div class="lg:col-span-2">
+                        <h4 class="font-bold text-lg text-slate-800 mb-3 bg-slate-100 p-2 rounded">F) Write a 5-line paragraph about an experience you remember the most</h4>
+                        <p class="text-sm text-slate-600 mb-2">Puedes escribir sobre una experiencia funny, sad, important, special, etc.</p>
+                        <textarea class="input h-32 w-full !border-2 !border-slate-200 p-3 resize-none" placeholder="Escribe aquí tu texto libre para practicar (No es evaluado automáticamente)..."></textarea>
+                    </div>
+
+                </div>
+            </div>
+
+            <div class="text-center py-4">
+                <i data-lucide="arrow-down" class="mx-auto h-8 w-8 text-rose-300 animate-bounce"></i>
             </div>
 
             <!-- SECCIÓN DE RESPUESTAS A EJERCICIOS -->
             <h3 class="text-xl font-bold text-slate-800 flex items-center mt-8 border-b pb-2">
-                <i data-lucide="check-square" class="mr-2 text-rose-500"></i> Respuestas a los ejercicios
+                <i data-lucide="check-square" class="mr-2 text-rose-500"></i> Respuestas oficiales a los ejercicios
             </h3>
             <div class="grid md:grid-cols-2 gap-4">
                 
-                <div class="card p-5 border-l-4 border-rose-500">
+                <div class="card p-5 border-l-4 border-rose-500 opacity-90">
                     <h4 class="font-bold text-lg text-rose-900 mb-3">A) Affirmative form: was / were</h4>
                     <ul class="space-y-3">
                         <li class="${listClass}">
@@ -1186,7 +1401,7 @@ function renderReviewQuestions() {
                     </ul>
                 </div>
 
-                <div class="card p-5 border-l-4 border-rose-500">
+                <div class="card p-5 border-l-4 border-rose-500 opacity-90">
                     <h4 class="font-bold text-lg text-rose-900 mb-3">B) Irregular verbs</h4>
                     <ul class="space-y-3">
                         <li class="${listClass}">
@@ -1252,7 +1467,7 @@ function renderReviewQuestions() {
                     </ul>
                 </div>
 
-                <div class="card p-5 border-l-4 border-rose-500">
+                <div class="card p-5 border-l-4 border-rose-500 opacity-90">
                     <h4 class="font-bold text-lg text-rose-900 mb-3">C) Regular verbs</h4>
                     <ul class="space-y-3">
                         <li class="${listClass}">
@@ -1298,7 +1513,7 @@ function renderReviewQuestions() {
                     </ul>
                 </div>
                 
-                <div class="card p-5 border-l-4 border-rose-500">
+                <div class="card p-5 border-l-4 border-rose-500 opacity-90">
                     <h4 class="font-bold text-lg text-rose-900 mb-3">D) Negative form</h4>
                     <ul class="space-y-3">
                         <li class="${listClass}">
@@ -1324,7 +1539,7 @@ function renderReviewQuestions() {
                     </ul>
                 </div>
 
-                <div class="card p-5 border-l-4 border-rose-500">
+                <div class="card p-5 border-l-4 border-rose-500 opacity-90">
                     <h4 class="font-bold text-lg text-rose-900 mb-3">E) Interrogative form</h4>
                     <ul class="space-y-3">
                         <li class="${listClass}">
@@ -1390,7 +1605,7 @@ function renderReviewQuestions() {
                     </ul>
                 </div>
                 
-                <div class="card p-5 border-l-4 border-rose-500">
+                <div class="card p-5 border-l-4 border-rose-500 opacity-90">
                     <h4 class="font-bold text-lg text-rose-900 mb-3">F) Paragraph Example</h4>
                     <p class="text-sm text-slate-600 mb-3">Un párrafo de 5 líneas sobre una experiencia especial:</p>
                     <div class="bg-indigo-50 p-4 rounded-xl border border-indigo-100 font-serif text-lg leading-relaxed shadow-sm">
@@ -1536,7 +1751,7 @@ function renderApp() {
     else if (activeTab === 'games') activeContent = renderGames();
     else if (activeTab === 'pro-games') activeContent = renderProGames();
     else if (activeTab === 'practice-table') activeContent = renderPracticeTable();
-    else if (activeTab === 'review') activeContent = renderReviewQuestions(); // SE RENDERIZA LA NUEVA PESTAÑA
+    else if (activeTab === 'review') activeContent = renderReviewQuestions();
 
     appContainer.innerHTML = `
         <div class="min-h-screen bg-slate-50 p-4 text-slate-900 md:p-8 pb-20">
