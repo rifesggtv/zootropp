@@ -440,7 +440,7 @@ let builderState = {
 
 // Estado avanzado para los primeros 50 Juegos Clásicos
 let gameState = {
-    challenges: null // Será un array de 50 retos
+    challenges: null
 };
 
 // Estado para los 100 Juegos NUEVOS de Pronunciación Variada
@@ -449,14 +449,70 @@ let proGameState = {
 };
 
 // Estados para "Practica el verbo"
-let practiceTableMode = 'past'; // Opciones: 'present', 'past', 'participle', 'es', 'random'
+let practiceTableMode = 'past';
 let practiceTableAnswers = {};
 let practiceTableResults = {};
 let practiceTableRandomMask = [];
 
+
+// --- NUEVO: ESTADO DE LA TABLA DE CALIFICACIONES (LEADERBOARD) ---
+let leaderBoard = [
+    {name: 'Master', score: 180},
+    {name: 'Pro', score: 120},
+    {name: 'Avanzado', score: 80},
+    {name: 'Principiante', score: 30}
+];
+let playerName = '';
+
+try {
+    const savedBoard = localStorage.getItem('verbMasterLeaderboard');
+    if (savedBoard) leaderBoard = JSON.parse(savedBoard);
+    
+    const savedName = localStorage.getItem('verbMasterPlayerName');
+    if (savedName) playerName = savedName;
+} catch(e) {
+    console.warn('LocalStorage no disponible');
+}
+
 // ==========================================
 // 4. LÓGICA DE ACTUALIZACIÓN DE ESTADOS
 // ==========================================
+
+window.getTotalScore = () => {
+    let originalScore = gameState.challenges ? gameState.challenges.filter(c => c.result === 'ok').length : 0;
+    let proScore = proGameState.challenges ? proGameState.challenges.filter(c => c.result === 'ok').length : 0;
+    let tableScore = Object.values(practiceTableResults).filter(res => res === 'ok').length;
+    return originalScore + proScore + tableScore;
+};
+
+window.saveScore = () => {
+    let nameInput = document.getElementById('playerNameInput');
+    if(!nameInput || !nameInput.value.trim()) return;
+    
+    playerName = nameInput.value.trim().substring(0, 15);
+    let score = getTotalScore();
+    
+    leaderBoard.push({name: playerName, score: score});
+    leaderBoard.sort((a, b) => b.score - a.score);
+    
+    let uniqueBoard = [];
+    let names = new Set();
+    for (let entry of leaderBoard) {
+        if (!names.has(entry.name)) {
+            uniqueBoard.push(entry);
+            names.add(entry.name);
+        }
+    }
+    
+    leaderBoard = uniqueBoard.slice(0, 4);
+    
+    try {
+        localStorage.setItem('verbMasterPlayerName', playerName);
+        localStorage.setItem('verbMasterLeaderboard', JSON.stringify(leaderBoard));
+    } catch(e) {}
+    
+    renderApp();
+};
 
 window.setTab = (tab) => { 
     activeTab = tab; 
@@ -478,8 +534,6 @@ window.updateBuilder = (key, val) => {
     renderApp(); 
 };
 
-// --- LÓGICA PARA "PRACTICA EL VERBO" ---
-
 window.initPracticeTable = () => {
     practiceTableAnswers = {};
     practiceTableResults = {};
@@ -489,18 +543,16 @@ window.initPracticeTable = () => {
     });
 };
 
-// Iniciar los datos de la tabla al cargar
 initPracticeTable();
 
 window.setPracticeTableMode = (mode) => {
     practiceTableMode = mode;
-    initPracticeTable(); // Reiniciar respuestas y nueva mascara aleatoria
+    initPracticeTable();
     renderApp();
 };
 
 window.updatePracticeTableAnswer = (idx, val) => {
     practiceTableAnswers[idx] = val;
-    // Quitamos el color de validación si el usuario vuelve a escribir
     practiceTableResults[idx] = null; 
 };
 
@@ -518,7 +570,6 @@ window.checkPracticeTableAnswer = (idx) => {
     let expectedParts = expected.split('/').map(s => normalize(s));
     let isCorrect = false;
 
-    // Validación flexible para manejar casos como "was / were" o "shown / showed"
     if (normInput === normalize(expected)) {
         isCorrect = true;
     } else if (expectedParts.includes(normInput)) {
@@ -539,9 +590,6 @@ window.checkAllPracticeTable = () => {
     });
     renderApp();
 };
-
-
-// --- LÓGICA PARA LOS 50 JUEGOS CLÁSICOS (ORIGINALES) ---
 
 window.initGames = () => {
     gameState.challenges = [];
@@ -612,8 +660,6 @@ window.pickQuiz = (id, choice) => {
     renderApp();
 };
 
-// --- LÓGICA PARA LOS 100 NUEVOS JUEGOS VARIADOS (PRO CHALLENGES) ---
-
 window.initProGames = () => {
     proGameState.challenges = [];
     const types = ['sound_match', 'odd_one_out', 'reading', 'syllable', 'listen_guess'];
@@ -626,7 +672,6 @@ window.initProGames = () => {
     ];
 
     for(let i = 0; i < 100; i++) {
-        // Aseguramos pasar por casi toda la lista de verbos
         let verb = verbs[i % verbs.length]; 
         let type = types[i % types.length];
         
@@ -639,7 +684,6 @@ window.initProGames = () => {
         };
 
         if (type === 'sound_match') {
-            // Verdadero / Falso sobre el sonido
             let isTrue = Math.random() > 0.5;
             let otherSounds = ['/t/', '/d/', '/id/', 'irregular'].filter(s => s !== verb.sound);
             ch.testSound = isTrue ? verb.sound : randomItem(otherSounds);
@@ -648,7 +692,6 @@ window.initProGames = () => {
             ch.options = ['Verdadero', 'Falso'];
             
         } else if (type === 'odd_one_out') {
-            // El Intruso: 2 verbos mismo sonido, 1 distinto
             let soundA = verb.sound;
             let otherSounds = ['/t/', '/d/', '/id/', 'irregular'].filter(s => s !== soundA);
             let soundB = randomItem(otherSounds);
@@ -660,24 +703,21 @@ window.initProGames = () => {
             if (v2.base === verb.base && poolA.length > 1) {
                 v2 = randomItem(poolA.filter(v => v.base !== verb.base));
             }
-            let v3 = randomItem(poolB); // El intruso
+            let v3 = randomItem(poolB);
             
             ch.options = [verb.base, v2.base, v3.base].sort(() => 0.5 - Math.random());
             ch.correct = v3.base;
             
         } else if (type === 'reading') {
-            // Lectura corta con verbo en pasado
             ch.text = randomItem(stories).replace('{past}', `<b>${verb.past}</b>`);
             ch.options = ['/t/', '/d/', '/id/', 'irregular'];
             ch.correct = verb.sound;
             
         } else if (type === 'syllable') {
-            // ¿Sílaba extra al final? (Solo ocurre con sonido /id/)
             ch.correct = verb.sound === '/id/' ? 'Sí' : 'No';
             ch.options = ['Sí', 'No'];
             
         } else if (type === 'listen_guess') {
-            // Escuchar y adivinar base verb
             let wrongOptions = verbs
                 .filter(v => v.base !== verb.base)
                 .sort(() => 0.5 - Math.random())
@@ -690,7 +730,6 @@ window.initProGames = () => {
         proGameState.challenges.push(ch);
     }
     
-    // Mezclamos aleatoriamente los 100 juegos
     proGameState.challenges.sort(() => 0.5 - Math.random());
     proGameState.challenges.forEach((c, idx) => c.id = idx);
 };
@@ -712,14 +751,65 @@ window.pickProGame = (id, choice) => {
 // 5. FUNCIONES DE RENDERIZADO (Componentes)
 // ==========================================
 
+function renderSaveScoreForm() {
+    let currentScore = getTotalScore();
+    let threshold = leaderBoard.length === 4 ? leaderBoard[3].score : 0;
+    
+    if (currentScore > 0 && currentScore > threshold) {
+        let alreadySaved = leaderBoard.some(l => l.name === playerName && l.score === currentScore);
+        
+        if (!alreadySaved) {
+            return `
+                <div class="mt-3 pt-3 border-t border-slate-600 animate-fade-in">
+                    <p class="text-[11px] text-green-400 font-bold mb-2 uppercase tracking-wide">¡Nuevo récord global!</p>
+                    <div class="flex gap-2">
+                        <input type="text" id="playerNameInput" class="input h-8 text-slate-900 text-xs px-2 rounded-md font-bold" placeholder="Tu nombre..." value="${playerName}" maxlength="15">
+                        <button class="btn bg-green-500 hover:bg-green-600 text-white h-8 text-xs px-3 rounded-md shadow" onclick="saveScore()">
+                            <i data-lucide="save" class="w-3 h-3 mr-1"></i> Guardar
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+    }
+    return '';
+}
+
 function renderHeader() {
+    let currentScore = getTotalScore();
+    
     return `
-      <div class="mb-6 rounded-3xl bg-gradient-to-br from-slate-900 to-slate-700 p-6 text-white shadow-lg animate-fade-in">
-        <div>
+      <div class="mb-6 rounded-3xl bg-gradient-to-br from-slate-900 to-slate-700 p-6 text-white shadow-lg animate-fade-in flex flex-col md:flex-row justify-between items-start gap-6">
+        <div class="flex-1">
           <h1 class="text-3xl font-bold tracking-tight">Verb Quest: Simple Past</h1>
-          <p class="mt-2 max-w-3xl text-sm text-slate-200">
+          <p class="mt-2 max-w-2xl text-sm text-slate-200">
             Juegos para aprender verbos, formar frases en presente y pasado, practicar pronunciación /t/, /d/, /id/ y preparar el speaking de <em>The Book of Life</em>.
           </p>
+          
+          <div class="mt-4 inline-flex items-center bg-white/10 border border-white/20 rounded-xl px-4 py-2 shadow-inner">
+            <i data-lucide="target" class="w-5 h-5 text-yellow-400 mr-2"></i>
+            <span class="font-bold text-yellow-400 text-2xl mr-2">${currentScore}</span>
+            <span class="text-xs text-slate-300 uppercase font-bold tracking-wider leading-tight">
+                Puntos en Total<br/>(Los 3 Juegos)
+            </span>
+          </div>
+        </div>
+
+        <div class="bg-slate-800/60 backdrop-blur-md border border-slate-600 rounded-2xl p-4 min-w-[260px] shadow-xl w-full md:w-auto">
+            <h3 class="text-yellow-400 font-bold flex items-center mb-3 text-sm uppercase tracking-wider">
+                <i data-lucide="trophy" class="w-5 h-5 mr-2"></i> Top 4 Puntajes
+            </h3>
+            <ul class="space-y-2 text-sm">
+                ${leaderBoard.map((entry, i) => `
+                    <li class="flex justify-between items-center bg-slate-900/50 rounded-lg px-3 py-1.5 border border-slate-700/50">
+                        <span class="font-semibold text-slate-200 flex items-center">
+                            <span class="text-slate-500 mr-2 font-black">${i+1}.</span> ${entry.name}
+                        </span>
+                        <span class="text-emerald-400 font-bold ml-4">${entry.score} pts</span>
+                    </li>
+                `).join('')}
+            </ul>
+            ${renderSaveScoreForm()}
         </div>
       </div>
     `;
@@ -735,7 +825,8 @@ function renderTabs() {
         { id: 'movie', label: 'Movie mode' },
         { id: 'games', label: 'Games (50)' },
         { id: 'pro-games', label: '100 Pro Challenges' },
-        { id: 'practice-table', label: 'Practica el verbo' } // NUEVA PESTAÑA
+        { id: 'practice-table', label: 'Practica el verbo' },
+        { id: 'review', label: 'Preguntas de repaso' } // NUEVA PESTAÑA
     ];
     
     let tabsHTML = '';
@@ -747,6 +838,8 @@ function renderTabs() {
             extraClass = activeTab === 'pro-games' ? 'bg-indigo-600 text-white shadow-sm' : 'bg-indigo-100 text-indigo-800 font-bold';
         } else if (t.id === 'practice-table') {
             extraClass = activeTab === 'practice-table' ? 'bg-emerald-600 text-white shadow-sm' : 'bg-emerald-100 text-emerald-800 font-bold';
+        } else if (t.id === 'review') {
+            extraClass = activeTab === 'review' ? 'bg-rose-600 text-white shadow-sm' : 'bg-rose-100 text-rose-800 font-bold';
         }
 
         tabsHTML += `
@@ -763,6 +856,7 @@ function renderTabs() {
     `;
 }
 
+// ... Funciones de renderizado de pestañas anteriores ...
 function renderLearn() {
     const filtered = verbs.filter(v => {
         const searchText = `${v.base} ${v.past} ${v.es} ${v.sound}`.toLowerCase();
@@ -826,30 +920,10 @@ function renderLearn() {
 
 function renderPronunciation() {
     const groups = [
-        { 
-            sound: "/t/", 
-            title: "Sonido /t/", 
-            rule: "Se usa cuando el verbo termina en sonido sordo: k, p, sh, ch, f, s, x.", 
-            examples: verbs.filter(v => v.sound === "/t/") 
-        },
-        { 
-            sound: "/d/", 
-            title: "Sonido /d/", 
-            rule: "Se usa cuando el verbo termina en sonido sonoro: vocal, l, n, r, v, z, m, g, y.", 
-            examples: verbs.filter(v => v.sound === "/d/") 
-        },
-        { 
-            sound: "/id/", 
-            title: "Sonido /id/", 
-            rule: "Se usa cuando el verbo termina en sonido /t/ o /d/.", 
-            examples: verbs.filter(v => v.sound === "/id/") 
-        },
-        { 
-            sound: "irregular", 
-            title: "Irregulares", 
-            rule: "No siguen la regla -ed. Hay que aprender pasado y participio por memoria y uso.", 
-            examples: verbs.filter(v => v.type === "irregular") 
-        }
+        { sound: "/t/", title: "Sonido /t/", rule: "Se usa cuando el verbo termina en sonido sordo: k, p, sh, ch, f, s, x.", examples: verbs.filter(v => v.sound === "/t/") },
+        { sound: "/d/", title: "Sonido /d/", rule: "Se usa cuando el verbo termina en sonido sonoro: vocal, l, n, r, v, z, m, g, y.", examples: verbs.filter(v => v.sound === "/d/") },
+        { sound: "/id/", title: "Sonido /id/", rule: "Se usa cuando el verbo termina en sonido /t/ o /d/.", examples: verbs.filter(v => v.sound === "/id/") },
+        { sound: "irregular", title: "Irregulares", rule: "No siguen la regla -ed. Hay que aprender pasado y participio por memoria y uso.", examples: verbs.filter(v => v.type === "irregular") }
     ];
 
     let groupsHTML = '';
@@ -857,37 +931,17 @@ function renderPronunciation() {
         let examplesHTML = '';
         for (let v of g.examples) {
             let safeText = v.past.replace(/'/g, "\\'");
-            examplesHTML += `
-                <button class="btn btn-outline rounded-full text-xs py-1" onclick="speak('${safeText}')">
-                    ${v.past} <i data-lucide="volume-2" class="ml-2 h-3 w-3"></i>
-                </button>
-            `;
+            examplesHTML += `<button class="btn btn-outline rounded-full text-xs py-1" onclick="speak('${safeText}')">${v.past} <i data-lucide="volume-2" class="ml-2 h-3 w-3"></i></button>`;
         }
-        
-        groupsHTML += `
-            <div class="card p-4 animate-fade-in">
-                <h2 class="text-xl font-bold">${g.title}</h2>
-                <p class="mt-1 text-sm text-slate-600">${g.rule}</p>
-                <div class="mt-3 flex flex-wrap gap-2">
-                    ${examplesHTML}
-                </div>
-            </div>
-        `;
+        groupsHTML += `<div class="card p-4 animate-fade-in"><h2 class="text-xl font-bold">${g.title}</h2><p class="mt-1 text-sm text-slate-600">${g.rule}</p><div class="mt-3 flex flex-wrap gap-2">${examplesHTML}</div></div>`;
     }
-
-    return `
-        <div class="grid gap-4 animate-fade-in">
-            ${groupsHTML}
-        </div>
-    `;
+    return `<div class="grid gap-4 animate-fade-in">${groupsHTML}</div>`;
 }
 
 function renderBuilder() {
     const s = builderState;
     const v = findVerb(s.verbName) || verbs[0];
-    
-    let sentence = "";
-    let explanation = "";
+    let sentence = "", explanation = "";
     
     if (s.mode === "affirmative") {
         sentence = `${s.subject} ${v.past} ${s.complement}.`;
@@ -900,58 +954,25 @@ function renderBuilder() {
         explanation = `Pregunta en pasado: Did + subject + verb in base form + complement? Después de Did, el verbo vuelve a base: "${v.base}".`;
     }
 
-    let optionsHTML = '';
-    for (let verb of verbs) {
-        let isSelected = s.verbName === verb.base ? 'selected' : '';
-        optionsHTML += `
-            <option value="${verb.base}" ${isSelected}>
-                ${verb.base} → ${verb.past}
-            </option>
-        `;
-    }
-
+    let optionsHTML = verbs.map(verb => `<option value="${verb.base}" ${s.verbName === verb.base ? 'selected' : ''}>${verb.base} → ${verb.past}</option>`).join('');
     let safeSentenceText = sentence.replace(/'/g, "\\'");
 
     return `
         <div class="card p-5 animate-fade-in">
-            <h2 class="mb-3 flex items-center text-xl font-bold">
-                <i data-lucide="pencil-line" class="mr-2 h-5 w-5"></i> Create sentences
-            </h2>
+            <h2 class="mb-3 flex items-center text-xl font-bold"><i data-lucide="pencil-line" class="mr-2 h-5 w-5"></i> Create sentences</h2>
             <div class="grid gap-3 md:grid-cols-4">
-                <input 
-                    class="input" 
-                    value="${s.subject}" 
-                    onkeyup="updateBuilder('subject', this.value)" 
-                    placeholder="Subject" 
-                />
-                <select class="input" onchange="updateBuilder('verbName', this.value)">
-                    ${optionsHTML}
-                </select>
-                <input 
-                    class="input" 
-                    value="${s.complement}" 
-                    onkeyup="updateBuilder('complement', this.value)" 
-                    placeholder="Complement" 
-                />
+                <input class="input" value="${s.subject}" onkeyup="updateBuilder('subject', this.value)" placeholder="Subject" />
+                <select class="input" onchange="updateBuilder('verbName', this.value)">${optionsHTML}</select>
+                <input class="input" value="${s.complement}" onkeyup="updateBuilder('complement', this.value)" placeholder="Complement" />
                 <select class="input" onchange="updateBuilder('mode', this.value)">
                     <option value="affirmative" ${s.mode === 'affirmative' ? 'selected' : ''}>Affirmative</option>
                     <option value="negative" ${s.mode === 'negative' ? 'selected' : ''}>Negative</option>
                     <option value="question" ${s.mode === 'question' ? 'selected' : ''}>Question</option>
                 </select>
             </div>
-            
-            <div class="mt-5 rounded-2xl bg-slate-100 p-4 text-2xl font-bold">
-                ${sentence}
-            </div>
-            
-            <div class="mt-3 rounded-2xl border p-4 text-sm text-slate-700">
-                <b>Explanation:</b> ${explanation}<br/>
-                <b>Verb:</b> ${v.base} → ${v.past}. <b>Pronunciation:</b> ${v.pronunciation}. <b>Sound:</b> ${v.sound}.
-            </div>
-            
-            <button class="btn btn-outline mt-4 rounded-xl" onclick="speak('${safeSentenceText}')">
-                <i data-lucide="volume-2" class="mr-2 h-4 w-4"></i> Listen sentence
-            </button>
+            <div class="mt-5 rounded-2xl bg-slate-100 p-4 text-2xl font-bold">${sentence}</div>
+            <div class="mt-3 rounded-2xl border p-4 text-sm text-slate-700"><b>Explanation:</b> ${explanation}<br/><b>Verb:</b> ${v.base} → ${v.past}. <b>Pronunciation:</b> ${v.pronunciation}. <b>Sound:</b> ${v.sound}.</div>
+            <button class="btn btn-outline mt-4 rounded-xl" onclick="speak('${safeSentenceText}')"><i data-lucide="volume-2" class="mr-2 h-4 w-4"></i> Listen sentence</button>
         </div>
     `;
 }
@@ -960,28 +981,13 @@ function renderGrammar() {
     return `
         <div class="grid gap-4 animate-fade-in">
             <div class="card p-5">
-                <h2 class="flex items-center text-xl font-bold">
-                    <i data-lucide="book-open" class="mr-2 h-5 w-5"></i> How to write sentences in Simple Past
-                </h2>
+                <h2 class="flex items-center text-xl font-bold"><i data-lucide="book-open" class="mr-2 h-5 w-5"></i> How to write sentences in Simple Past</h2>
                 <div class="mt-4 grid gap-3 md:grid-cols-3">
-                    <div class="rounded-2xl bg-slate-100 p-4">
-                        <b>Affirmative</b>
-                        <p>Subject + verb in past + complement.</p>
-                        <p class="mt-2 font-semibold">Manolo loved María.</p>
-                    </div>
-                    <div class="rounded-2xl bg-slate-100 p-4">
-                        <b>Negative</b>
-                        <p>Subject + did not + base verb + complement.</p>
-                        <p class="mt-2 font-semibold">Manolo did not kill the bull.</p>
-                    </div>
-                    <div class="rounded-2xl bg-slate-100 p-4">
-                        <b>Question</b>
-                        <p>Did + subject + base verb + complement?</p>
-                        <p class="mt-2 font-semibold">Did Manolo save the town?</p>
-                    </div>
+                    <div class="rounded-2xl bg-slate-100 p-4"><b>Affirmative</b><p>Subject + verb in past + complement.</p><p class="mt-2 font-semibold">Manolo loved María.</p></div>
+                    <div class="rounded-2xl bg-slate-100 p-4"><b>Negative</b><p>Subject + did not + base verb + complement.</p><p class="mt-2 font-semibold">Manolo did not kill the bull.</p></div>
+                    <div class="rounded-2xl bg-slate-100 p-4"><b>Question</b><p>Did + subject + base verb + complement?</p><p class="mt-2 font-semibold">Did Manolo save the town?</p></div>
                 </div>
             </div>
-            
             <div class="card p-5">
                 <h3 class="text-lg font-bold">Important rules</h3>
                 <p class="mt-2 text-sm text-slate-700">1. En afirmativa sí usamos el verbo en pasado: <b>Manolo saved the town.</b></p>
@@ -996,445 +1002,518 @@ function renderGrammar() {
 
 function renderLibrary() {
     let cardsHTML = '';
-    
     for (let i = 0; i < practiceSentences.length; i++) {
-        let s = practiceSentences[i];
-        let info = getVerbInfo(s);
-        let safeText = `${s.present.replace(/'/g, "\\'")}. ${s.past.replace(/'/g, "\\'")}`;
-        
+        let s = practiceSentences[i], info = getVerbInfo(s), safeText = `${s.present.replace(/'/g, "\\'")}. ${s.past.replace(/'/g, "\\'")}`;
         cardsHTML += `
             <div class="card p-4 animate-fade-in">
                 <div class="badge badge-default mb-2">#${i + 1}</div>
-                <p><b>Present:</b> ${s.present}</p>
-                <p><b>Past:</b> ${s.past}</p>
-                <p><b>Spanish:</b> ${s.es}</p>
-                <p class="mt-2 text-sm text-slate-600">
-                    <b>Verb:</b> ${s.verb} → ${info.past} | <b>Pron:</b> ${info.pronunciation} | <b>Sound:</b> ${info.sound}
-                </p>
-                <button class="btn btn-outline mt-3 rounded-xl" onclick="speak('${safeText}')">
-                    <i data-lucide="volume-2" class="mr-2 h-4 w-4"></i> Listen
-                </button>
-            </div>
-        `;
+                <p><b>Present:</b> ${s.present}</p><p><b>Past:</b> ${s.past}</p><p><b>Spanish:</b> ${s.es}</p>
+                <p class="mt-2 text-sm text-slate-600"><b>Verb:</b> ${s.verb} → ${info.past} | <b>Pron:</b> ${info.pronunciation} | <b>Sound:</b> ${info.sound}</p>
+                <button class="btn btn-outline mt-3 rounded-xl" onclick="speak('${safeText}')"><i data-lucide="volume-2" class="mr-2 h-4 w-4"></i> Listen</button>
+            </div>`;
     }
-
-    return `
-        <div class="grid gap-3 animate-fade-in">
-            <div class="card p-5">
-                <h2 class="text-xl font-bold">50+ sentences: Present and Past</h2>
-                <p class="mt-2 text-sm text-slate-600">Cada frase muestra presente, pasado, traducción, verbo y pronunciación.</p>
-            </div>
-            <div class="grid gap-3 md:grid-cols-2">
-                ${cardsHTML}
-            </div>
-        </div>
-    `;
+    return `<div class="grid gap-3 animate-fade-in"><div class="card p-5"><h2 class="text-xl font-bold">50+ sentences: Present and Past</h2><p class="mt-2 text-sm text-slate-600">Cada frase muestra presente, pasado, traducción, verbo y pronunciación.</p></div><div class="grid gap-3 md:grid-cols-2">${cardsHTML}</div></div>`;
 }
 
 function renderMovieMode() {
     let cardsHTML = '';
-    
     for (let i = 0; i < movieSentences.length; i++) {
-        let s = movieSentences[i];
-        let info = getVerbInfo(s);
-        let safeText = s.past.replace(/'/g, "\\'");
-        
+        let s = movieSentences[i], info = getVerbInfo(s), safeText = s.past.replace(/'/g, "\\'");
         cardsHTML += `
             <div class="card p-4 animate-fade-in">
-                <div class="text-sm text-slate-500">Present</div>
-                <div class="font-semibold">${s.present}</div>
-                <div class="mt-2 text-sm text-slate-500">Past</div>
-                <div class="text-lg font-bold">${s.past}</div>
+                <div class="text-sm text-slate-500">Present</div><div class="font-semibold">${s.present}</div>
+                <div class="mt-2 text-sm text-slate-500">Past</div><div class="text-lg font-bold">${s.past}</div>
                 <div class="mt-2 text-sm">${s.es}</div>
-                <div class="mt-2 rounded-xl bg-slate-100 p-2 text-sm">
-                    <b>Verb:</b> ${s.verb} → ${info.past}<br/>
-                    <b>Pron:</b> ${info.pronunciation}<br/>
-                    <b>Sound:</b> ${info.sound}
-                </div>
-                <button class="btn btn-outline mt-3 w-full rounded-xl" onclick="speak('${safeText}')">
-                    <i data-lucide="volume-2" class="mr-2 h-4 w-4"></i> Listen
-                </button>
-            </div>
-        `;
+                <div class="mt-2 rounded-xl bg-slate-100 p-2 text-sm"><b>Verb:</b> ${s.verb} → ${info.past}<br/><b>Pron:</b> ${info.pronunciation}<br/><b>Sound:</b> ${info.sound}</div>
+                <button class="btn btn-outline mt-3 w-full rounded-xl" onclick="speak('${safeText}')"><i data-lucide="volume-2" class="mr-2 h-4 w-4"></i> Listen</button>
+            </div>`;
     }
-
-    return `
-        <div class="grid gap-3 animate-fade-in">
-            <div class="card p-5">
-                <h2 class="flex items-center text-xl font-bold">
-                    <i data-lucide="film" class="mr-2 h-5 w-5"></i> Practice with The Book of Life
-                </h2>
-                <p class="mt-2 text-sm text-slate-600">Frases cortas para practicar el speaking con acciones claras en pasado.</p>
-            </div>
-            <div class="grid gap-3 md:grid-cols-2">
-                ${cardsHTML}
-            </div>
-        </div>
-    `;
+    return `<div class="grid gap-3 animate-fade-in"><div class="card p-5"><h2 class="flex items-center text-xl font-bold"><i data-lucide="film" class="mr-2 h-5 w-5"></i> Practice with The Book of Life</h2><p class="mt-2 text-sm text-slate-600">Frases cortas para practicar el speaking con acciones claras en pasado.</p></div><div class="grid gap-3 md:grid-cols-2">${cardsHTML}</div></div>`;
 }
 
-// ==========================================
-// RENDERIZADO INDIVIDUAL DE JUEGOS CLÁSICOS (50)
-// ==========================================
-
+// ... Funciones de los 50 y 100 Juegos ...
 function renderFillCard(ch) {
-    const fInfo = getVerbInfo(ch.item);
-    const correctPastTarget = fInfo.past || ch.item.custom?.past;
-    const regex = new RegExp("\\b" + correctPastTarget + "\\b", "i");
-    const fBlank = ch.item.past.replace(regex, "______");
-    
-    let statusHTML = '';
-    let isOk = ch.result === 'ok';
-    let isDisabled = isOk ? 'disabled' : '';
-    
+    const fInfo = getVerbInfo(ch.item), correctPastTarget = fInfo.past || ch.item.custom?.past;
+    const regex = new RegExp("\\b" + correctPastTarget + "\\b", "i"), fBlank = ch.item.past.replace(regex, "______");
+    let statusHTML = '', isOk = ch.result === 'ok', isDisabled = isOk ? 'disabled' : '';
     if (ch.result) {
         let bgClass = isOk ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800';
-        let iconName = isOk ? 'check-circle-2' : 'x-circle';
-        let messageText = isOk ? "Correct!" : `Try again. Correct answer: ${fInfo.past}`;
-        statusHTML = `
-            <div class="mt-4 rounded-2xl p-4 ${bgClass} animate-fade-in">
-                <i data-lucide="${iconName}" class="inline h-5 w-5"></i>
-                ${messageText}<br/>
-                Pronunciation: <b>${fInfo.pronunciation}</b> | Sound: <b>${fInfo.sound}</b><br/>
-                Spanish: ${ch.item.es}
-            </div>
-        `;
+        statusHTML = `<div class="mt-4 rounded-2xl p-4 ${bgClass} animate-fade-in"><i data-lucide="${isOk ? 'check-circle-2' : 'x-circle'}" class="inline h-5 w-5"></i> ${isOk ? "Correct!" : `Try again. Correct answer: ${fInfo.past}`}<br/>Pronunciation: <b>${fInfo.pronunciation}</b> | Sound: <b>${fInfo.sound}</b><br/>Spanish: ${ch.item.es}</div>`;
     }
-    const safeAudio = ch.item.past.replace(/'/g, "\\'");
-    return `
-        <div class="card p-5">
-            <div class="flex justify-between items-center mb-3">
-                <h2 class="flex items-center text-xl font-bold"><i data-lucide="gamepad-2" class="mr-2 h-5 w-5"></i> Complete the sentence</h2>
-                <span class="badge badge-secondary">Game #${ch.id + 1}</span>
-            </div>
-            <div class="mt-4 rounded-2xl bg-slate-100 p-4 text-xl font-bold">${fBlank}</div>
-            <div class="mt-2 text-sm text-slate-500">Present: ${ch.item.present}</div>
-            <div class="mt-4 flex gap-2">
-                <input class="input" value="${ch.answer}" onkeyup="updateFill(${ch.id}, this.value); if(event.key === 'Enter') checkFill(${ch.id});" placeholder="Past verb..." ${isDisabled} />
-                <button class="btn btn-primary" onclick="checkFill(${ch.id})" ${isDisabled}>Check</button>
-            </div>
-            ${statusHTML}
-            <button class="btn btn-outline mt-4 rounded-xl w-full" onclick="speak('${safeAudio}')"><i data-lucide="volume-2" class="mr-2 h-4 w-4"></i> Listen answer</button>
-        </div>
-    `;
+    return `<div class="card p-5"><div class="flex justify-between items-center mb-3"><h2 class="flex items-center text-xl font-bold"><i data-lucide="gamepad-2" class="mr-2 h-5 w-5"></i> Complete the sentence</h2><span class="badge badge-secondary">Game #${ch.id + 1}</span></div><div class="mt-4 rounded-2xl bg-slate-100 p-4 text-xl font-bold">${fBlank}</div><div class="mt-2 text-sm text-slate-500">Present: ${ch.item.present}</div><div class="mt-4 flex gap-2"><input class="input" value="${ch.answer}" onkeyup="updateFill(${ch.id}, this.value); if(event.key === 'Enter') checkFill(${ch.id});" placeholder="Past verb..." ${isDisabled} /><button class="btn btn-primary" onclick="checkFill(${ch.id})" ${isDisabled}>Check</button></div>${statusHTML}<button class="btn btn-outline mt-4 rounded-xl w-full" onclick="speak('${ch.item.past.replace(/'/g, "\\'")}')"><i data-lucide="volume-2" class="mr-2 h-4 w-4"></i> Listen answer</button></div>`;
 }
 
 function renderClassCard(ch) {
-    let statusHTML = '';
-    let isOk = ch.result === 'ok';
-    let isDisabled = isOk ? 'disabled' : '';
-
-    if (ch.result) {
-        let bgClass = isOk ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800';
-        statusHTML = `<div class="mt-4 rounded-2xl p-4 ${bgClass} animate-fade-in">${isOk ? "Correct." : `Nope. It is ${ch.item.sound}.`} Pronunciation: <b>${ch.item.pronunciation}</b></div>`;
-    }
-    
+    let statusHTML = '', isOk = ch.result === 'ok', isDisabled = isOk ? 'disabled' : '';
+    if (ch.result) statusHTML = `<div class="mt-4 rounded-2xl p-4 ${isOk ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'} animate-fade-in">${isOk ? "Correct." : `Nope. It is ${ch.item.sound}.`} Pronunciation: <b>${ch.item.pronunciation}</b></div>`;
     let soundButtonsHTML = ["/t/", "/d/", "/id/", "irregular"].map(s => `<button class="btn btn-outline rounded-xl" onclick="pickClass(${ch.id}, '${s}')" ${isDisabled}>${s}</button>`).join('');
-    const safeAudio = ch.item.past.replace(/'/g, "\\'");
-    
-    return `
-        <div class="card p-5">
-            <div class="flex justify-between items-center mb-3">
-                <h2 class="flex items-center text-xl font-bold"><i data-lucide="shuffle" class="mr-2 h-5 w-5"></i> Classify the verb</h2>
-                <span class="badge badge-secondary">Game #${ch.id + 1}</span>
-            </div>
-            <div class="rounded-2xl bg-slate-100 p-5 text-center"><div class="text-4xl font-bold">${ch.item.past}</div><div class="mt-1 text-sm text-slate-500">${ch.item.base} | ${ch.item.es}</div></div>
-            <div class="mt-4 grid grid-cols-2 gap-2 md:grid-cols-4">${soundButtonsHTML}</div>
-            ${statusHTML}
-            <div class="mt-4 flex gap-2"><button class="btn btn-primary w-full" onclick="speak('${safeAudio}')"><i data-lucide="volume-2" class="mr-2 h-4 w-4"></i> Listen</button></div>
-        </div>
-    `;
+    return `<div class="card p-5"><div class="flex justify-between items-center mb-3"><h2 class="flex items-center text-xl font-bold"><i data-lucide="shuffle" class="mr-2 h-5 w-5"></i> Classify the verb</h2><span class="badge badge-secondary">Game #${ch.id + 1}</span></div><div class="rounded-2xl bg-slate-100 p-5 text-center"><div class="text-4xl font-bold">${ch.item.past}</div><div class="mt-1 text-sm text-slate-500">${ch.item.base} | ${ch.item.es}</div></div><div class="mt-4 grid grid-cols-2 gap-2 md:grid-cols-4">${soundButtonsHTML}</div>${statusHTML}<div class="mt-4 flex gap-2"><button class="btn btn-primary w-full" onclick="speak('${ch.item.past.replace(/'/g, "\\'")}')"><i data-lucide="volume-2" class="mr-2 h-4 w-4"></i> Listen</button></div></div>`;
 }
 
 function renderQuizCard(ch) {
-    let statusHTML = '';
-    let isOk = ch.result === 'ok';
-    let isDisabled = isOk ? 'disabled' : '';
-
-    if (ch.result) {
-        let bgClass = isOk ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800';
-        statusHTML = `<div class="mt-4 rounded-2xl p-4 ${bgClass} animate-fade-in">${isOk ? "Correct." : `Incorrect. Correct answer: ${ch.item.past}`}<br/>Pronunciation: <b>${ch.item.pronunciation}</b><br/>Spanish: ${ch.item.es}</div>`;
-    }
-    
+    let statusHTML = '', isOk = ch.result === 'ok', isDisabled = isOk ? 'disabled' : '';
+    if (ch.result) statusHTML = `<div class="mt-4 rounded-2xl p-4 ${isOk ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'} animate-fade-in">${isOk ? "Correct." : `Incorrect. Correct answer: ${ch.item.past}`}<br/>Pronunciation: <b>${ch.item.pronunciation}</b><br/>Spanish: ${ch.item.es}</div>`;
     let quizOptionsHTML = ch.options.map(opt => `<button class="btn ${ch.choice === opt ? "btn-primary" : "btn-outline"} rounded-xl" onclick="pickQuiz(${ch.id}, '${opt.replace(/'/g, "\\'")}')" ${isDisabled}>${opt}</button>`).join('');
-    const safeAudio = ch.item.past.replace(/'/g, "\\'");
-    
-    return `
-        <div class="card p-5">
-            <div class="flex justify-between items-center mb-3">
-                <h2 class="text-xl font-bold">Multiple choice quiz</h2>
-                <span class="badge badge-secondary">Game #${ch.id + 1}</span>
-            </div>
-            <p class="mt-2 text-sm text-slate-600">What is the past of <b>${ch.item.base}</b>?</p>
-            <div class="mt-4 grid gap-2 md:grid-cols-2">${quizOptionsHTML}</div>
-            ${statusHTML}
-            <div class="mt-4 flex gap-2"><button class="btn btn-primary w-full" onclick="speak('${safeAudio}')"><i data-lucide="volume-2" class="mr-2 h-4 w-4"></i> Listen</button></div>
-        </div>
-    `;
+    return `<div class="card p-5"><div class="flex justify-between items-center mb-3"><h2 class="text-xl font-bold">Multiple choice quiz</h2><span class="badge badge-secondary">Game #${ch.id + 1}</span></div><p class="mt-2 text-sm text-slate-600">What is the past of <b>${ch.item.base}</b>?</p><div class="mt-4 grid gap-2 md:grid-cols-2">${quizOptionsHTML}</div>${statusHTML}<div class="mt-4 flex gap-2"><button class="btn btn-primary w-full" onclick="speak('${ch.item.past.replace(/'/g, "\\'")}')"><i data-lucide="volume-2" class="mr-2 h-4 w-4"></i> Listen</button></div></div>`;
 }
 
 function renderGames() {
     if (!gameState.challenges) initGames();
-
-    let gamesListHTML = '';
-    let correctAnswers = 0;
-    
+    let gamesListHTML = '', correctAnswers = 0;
     for (let ch of gameState.challenges) {
         if (ch.result === 'ok') correctAnswers++;
         if (ch.type === 'fill') gamesListHTML += renderFillCard(ch);
         else if (ch.type === 'class') gamesListHTML += renderClassCard(ch);
         else if (ch.type === 'quiz') gamesListHTML += renderQuizCard(ch);
     }
-
-    return `
-        <div class="animate-fade-in">
-            <div class="card p-6 mb-6 bg-gradient-to-r from-slate-800 to-slate-700 text-white flex flex-col sm:flex-row justify-between items-center gap-4">
-                <div>
-                    <h2 class="text-2xl font-bold flex items-center"><i data-lucide="gamepad-2" class="mr-3 h-6 w-6"></i> The 50 Original Challenges</h2>
-                    <p class="text-slate-200 mt-1">Mezcla de ejercicios clásicos para dominar escritura y pasado simple.</p>
-                </div>
-                <div class="flex items-center gap-6">
-                    <div class="text-center">
-                        <div class="text-4xl font-black text-emerald-400">${correctAnswers} <span class="text-xl text-slate-300">/ 50</span></div>
-                        <div class="text-sm text-slate-300 uppercase tracking-widest font-bold mt-1">Correctas</div>
-                    </div>
-                    <button class="btn bg-white text-slate-800 hover:bg-slate-200 rounded-xl" onclick="gameState.challenges = null; renderApp();"><i data-lucide="rotate-ccw" class="mr-2 h-4 w-4"></i> Reiniciar</button>
-                </div>
-            </div>
-            <div class="grid gap-4 lg:grid-cols-2">${gamesListHTML}</div>
-        </div>
-    `;
+    return `<div class="animate-fade-in"><div class="card p-6 mb-6 bg-gradient-to-r from-slate-800 to-slate-700 text-white flex flex-col sm:flex-row justify-between items-center gap-4"><div><h2 class="text-2xl font-bold flex items-center"><i data-lucide="gamepad-2" class="mr-3 h-6 w-6"></i> The 50 Original Challenges</h2><p class="text-slate-200 mt-1">Mezcla de ejercicios clásicos para dominar escritura y pasado simple.</p></div><div class="flex items-center gap-6"><div class="text-center"><div class="text-4xl font-black text-emerald-400">${correctAnswers} <span class="text-xl text-slate-300">/ 50</span></div><div class="text-sm text-slate-300 uppercase tracking-widest font-bold mt-1">Correctas</div></div><button class="btn bg-white text-slate-800 hover:bg-slate-200 rounded-xl" onclick="gameState.challenges = null; renderApp();"><i data-lucide="rotate-ccw" class="mr-2 h-4 w-4"></i> Reiniciar</button></div></div><div class="grid gap-4 lg:grid-cols-2">${gamesListHTML}</div></div>`;
 }
-
-// ==========================================
-// RENDERIZADO INDIVIDUAL: 100 PRO CHALLENGES
-// ==========================================
 
 function getProStatusHTML(ch) {
     if (!ch.result) return '';
-    let isOk = ch.result === 'ok';
-    let bgClass = isOk ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800';
-    let msg = isOk ? "¡Excelente!" : `Incorrecto. La respuesta correcta era: <b>${ch.correct}</b>.`;
-    return `
-        <div class="mt-4 rounded-2xl p-4 ${bgClass} animate-fade-in text-sm">
-            ${msg}<br/>
-            <span class="text-slate-600">Verbo original: <b>${ch.verb.base}</b> → <b>${ch.verb.past}</b> (Pronunciación: ${ch.verb.sound})</span>
-        </div>
-    `;
+    let isOk = ch.result === 'ok', bgClass = isOk ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800';
+    return `<div class="mt-4 rounded-2xl p-4 ${bgClass} animate-fade-in text-sm">${isOk ? "¡Excelente!" : `Incorrecto. La respuesta correcta era: <b>${ch.correct}</b>.`}<br/><span class="text-slate-600">Verbo original: <b>${ch.verb.base}</b> → <b>${ch.verb.past}</b> (Pronunciación: ${ch.verb.sound})</span></div>`;
 }
 
 function renderProCardGeneric(ch, title, icon, questionHTML, optionsClass = "grid-cols-2") {
     let isDisabled = ch.result === 'ok' ? 'disabled' : '';
-    let safeAudio = ch.verb.past.replace(/'/g, "\\'");
-    
-    let optsHTML = ch.options.map(opt => {
-        let safeOpt = opt.replace(/'/g, "\\'");
-        let activeClass = ch.choice === opt ? "btn-primary" : "btn-outline";
-        return `<button class="btn ${activeClass} rounded-xl" onclick="pickProGame(${ch.id}, '${safeOpt}')" ${isDisabled}>${opt}</button>`;
-    }).join('');
-
-    return `
-        <div class="card p-5 border-l-4 border-l-indigo-500">
-            <div class="flex justify-between items-center mb-3">
-                <h2 class="flex items-center text-lg font-bold text-indigo-900"><i data-lucide="${icon}" class="mr-2 h-5 w-5 text-indigo-500"></i> ${title}</h2>
-                <span class="badge badge-secondary">Pro #${ch.id + 1}</span>
-            </div>
-            
-            <div class="mb-4 text-slate-700">${questionHTML}</div>
-            
-            <div class="grid gap-2 ${optionsClass}">${optsHTML}</div>
-            
-            ${getProStatusHTML(ch)}
-            
-            <div class="mt-4 border-t pt-3">
-                <button class="btn btn-outline w-full rounded-xl" onclick="speak('${safeAudio}')">
-                    <i data-lucide="volume-2" class="mr-2 h-4 w-4"></i> Escuchar Pasado
-                </button>
-            </div>
-        </div>
-    `;
+    let optsHTML = ch.options.map(opt => `<button class="btn ${ch.choice === opt ? "btn-primary" : "btn-outline"} rounded-xl" onclick="pickProGame(${ch.id}, '${opt.replace(/'/g, "\\'")}')" ${isDisabled}>${opt}</button>`).join('');
+    return `<div class="card p-5 border-l-4 border-l-indigo-500"><div class="flex justify-between items-center mb-3"><h2 class="flex items-center text-lg font-bold text-indigo-900"><i data-lucide="${icon}" class="mr-2 h-5 w-5 text-indigo-500"></i> ${title}</h2><span class="badge badge-secondary">Pro #${ch.id + 1}</span></div><div class="mb-4 text-slate-700">${questionHTML}</div><div class="grid gap-2 ${optionsClass}">${optsHTML}</div>${getProStatusHTML(ch)}<div class="mt-4 border-t pt-3"><button class="btn btn-outline w-full rounded-xl" onclick="speak('${ch.verb.past.replace(/'/g, "\\'")}')"><i data-lucide="volume-2" class="mr-2 h-4 w-4"></i> Escuchar Pasado</button></div></div>`;
 }
 
-function renderProSoundMatch(ch) {
-    let q = `¿Es cierto que el verbo en pasado <b>${ch.verb.past}</b> (${ch.verb.base}) termina con el sonido <b>${ch.testSound}</b>?`;
-    return renderProCardGeneric(ch, "Sound Match", "ear", q);
-}
-
-function renderProOddOne(ch) {
-    let q = `<b>Encuentra el intruso:</b> ¿Cuál de estos verbos en pasado NO termina con el mismo sonido que los otros dos?`;
-    return renderProCardGeneric(ch, "Odd One Out", "search", q, "grid-cols-1 md:grid-cols-3");
-}
-
-function renderProReading(ch) {
-    let q = `
-        <div class="p-3 bg-slate-50 rounded-xl mb-2 italic border text-sm">«${ch.text}»</div>
-        ¿Cuál es el sonido final correcto para el verbo resaltado?
-    `;
-    return renderProCardGeneric(ch, "Reading Comprehension", "book-open", q, "grid-cols-4");
-}
-
-function renderProSyllable(ch) {
-    let q = `Al conjugar <b>${ch.verb.base}</b> en pasado obtenemos <b>${ch.verb.past}</b>.<br/>¿La terminación "-ed" añade una <b>sílaba extra</b> al pronunciarlo?`;
-    return renderProCardGeneric(ch, "Syllable Check", "music", q);
-}
-
-function renderProListen(ch) {
-    let safeAudio = ch.verb.past.replace(/'/g, "\\'");
-    let q = `
-        <button class="btn btn-primary w-full mb-3 rounded-full shadow-lg hover:scale-105 transition-transform" onclick="speak('${safeAudio}')">
-            <i data-lucide="play" class="mr-2 h-5 w-5"></i> Escuchar Audio Oculto
-        </button>
-        ¿A qué verbo en <b>presente</b> corresponde el pasado que acabas de escuchar?
-    `;
-    return renderProCardGeneric(ch, "Listen & Guess", "headphones", q);
-}
+function renderProSoundMatch(ch) { return renderProCardGeneric(ch, "Sound Match", "ear", `¿Es cierto que el verbo en pasado <b>${ch.verb.past}</b> (${ch.verb.base}) termina con el sonido <b>${ch.testSound}</b>?`); }
+function renderProOddOne(ch) { return renderProCardGeneric(ch, "Odd One Out", "search", `<b>Encuentra el intruso:</b> ¿Cuál de estos verbos en pasado NO termina con el mismo sonido que los otros dos?`, "grid-cols-1 md:grid-cols-3"); }
+function renderProReading(ch) { return renderProCardGeneric(ch, "Reading Comprehension", "book-open", `<div class="p-3 bg-slate-50 rounded-xl mb-2 italic border text-sm">«${ch.text}»</div>¿Cuál es el sonido final correcto para el verbo resaltado?`, "grid-cols-4"); }
+function renderProSyllable(ch) { return renderProCardGeneric(ch, "Syllable Check", "music", `Al conjugar <b>${ch.verb.base}</b> en pasado obtenemos <b>${ch.verb.past}</b>.<br/>¿La terminación "-ed" añade una <b>sílaba extra</b> al pronunciarlo?`); }
+function renderProListen(ch) { return renderProCardGeneric(ch, "Listen & Guess", "headphones", `<button class="btn btn-primary w-full mb-3 rounded-full shadow-lg hover:scale-105 transition-transform" onclick="speak('${ch.verb.past.replace(/'/g, "\\'")}')"><i data-lucide="play" class="mr-2 h-5 w-5"></i> Escuchar Audio Oculto</button>¿A qué verbo en <b>presente</b> corresponde el pasado que acabas de escuchar?`); }
 
 function renderProGames() {
     if (!proGameState.challenges) initProGames();
-
-    let listHTML = '';
-    let corrects = 0;
-    
+    let listHTML = '', corrects = 0;
     for (let ch of proGameState.challenges) {
         if (ch.result === 'ok') corrects++;
-        
         if (ch.type === 'sound_match') listHTML += renderProSoundMatch(ch);
         else if (ch.type === 'odd_one_out') listHTML += renderProOddOne(ch);
         else if (ch.type === 'reading') listHTML += renderProReading(ch);
         else if (ch.type === 'syllable') listHTML += renderProSyllable(ch);
         else if (ch.type === 'listen_guess') listHTML += renderProListen(ch);
     }
-
-    return `
-        <div class="animate-fade-in">
-            <!-- Header 100 Juegos Pro -->
-            <div class="card p-6 mb-6 bg-gradient-to-br from-indigo-900 to-indigo-700 text-white flex flex-col sm:flex-row justify-between items-center gap-4 shadow-xl">
-                <div>
-                    <h2 class="text-2xl font-bold flex items-center"><i data-lucide="flame" class="mr-3 h-7 w-7 text-orange-400"></i> The 100 Pro Challenges</h2>
-                    <p class="text-indigo-200 mt-2 max-w-xl text-sm">
-                        La prueba definitiva. 100 juegos diferentes utilizando todos los verbos de tu lista. 
-                        Practica lectura, identifica el intruso, reglas de sílabas y escucha de audios ocultos.
-                    </p>
-                </div>
-                <div class="flex items-center gap-6">
-                    <div class="text-center bg-black/20 p-4 rounded-2xl backdrop-blur-sm">
-                        <div class="text-5xl font-black text-yellow-400">${corrects} <span class="text-2xl text-indigo-300">/ 100</span></div>
-                        <div class="text-xs text-indigo-300 uppercase tracking-widest font-bold mt-2">Puntuación Pro</div>
-                    </div>
-                    <button class="btn bg-white text-indigo-900 hover:bg-indigo-50 rounded-xl font-bold" onclick="proGameState.challenges = null; renderApp();">
-                        <i data-lucide="rotate-ccw" class="mr-2 h-4 w-4"></i> Mezclar y Reiniciar
-                    </button>
-                </div>
-            </div>
-            
-            <div class="grid gap-5 lg:grid-cols-2">
-                ${listHTML}
-            </div>
-        </div>
-    `;
+    return `<div class="animate-fade-in"><div class="card p-6 mb-6 bg-gradient-to-br from-indigo-900 to-indigo-700 text-white flex flex-col sm:flex-row justify-between items-center gap-4 shadow-xl"><div><h2 class="text-2xl font-bold flex items-center"><i data-lucide="flame" class="mr-3 h-7 w-7 text-orange-400"></i> The 100 Pro Challenges</h2><p class="text-indigo-200 mt-2 max-w-xl text-sm">La prueba definitiva. 100 juegos diferentes utilizando todos los verbos de tu lista.</p></div><div class="flex items-center gap-6"><div class="text-center bg-black/20 p-4 rounded-2xl backdrop-blur-sm"><div class="text-5xl font-black text-yellow-400">${corrects} <span class="text-2xl text-indigo-300">/ 100</span></div><div class="text-xs text-indigo-300 uppercase tracking-widest font-bold mt-2">Puntuación Pro</div></div><button class="btn bg-white text-indigo-900 hover:bg-indigo-50 rounded-xl font-bold" onclick="proGameState.challenges = null; renderApp();"><i data-lucide="rotate-ccw" class="mr-2 h-4 w-4"></i> Mezclar y Reiniciar</button></div></div><div class="grid gap-5 lg:grid-cols-2">${listHTML}</div></div>`;
 }
 
-// ==========================================
-// NUEVA SECCIÓN: PRACTICA EL VERBO (TABLA COMPLETA)
-// ==========================================
-
+// ... Funciones de la Tabla de Práctica ...
 function createPracticeInput(idx, expectedVal) {
-    let val = practiceTableAnswers[idx] || '';
-    let res = practiceTableResults[idx];
-    let borderClass = 'border-slate-300 focus:border-emerald-500 focus:ring-emerald-500';
-    let icon = '';
-    
-    if (res === 'ok') { 
-        borderClass = 'border-green-500 bg-green-50 text-green-700 font-bold'; 
-        icon = '<i data-lucide="check" class="inline w-4 h-4 text-green-600 ml-2 flex-shrink-0"></i>'; 
-    }
-    else if (res === 'bad') { 
-        borderClass = 'border-red-500 bg-red-50 text-red-700'; 
-        icon = '<i data-lucide="x" class="inline w-4 h-4 text-red-600 ml-2 flex-shrink-0"></i>'; 
-    }
-
-    return `
-        <div class="flex items-center w-full">
-            <input type="text" 
-                class="input w-full h-9 text-sm ${borderClass}" 
-                value="${val}" 
-                oninput="updatePracticeTableAnswer(${idx}, this.value)"
-                onblur="checkPracticeTableAnswer(${idx})"
-                onkeyup="if(event.key==='Enter') checkPracticeTableAnswer(${idx})"
-                placeholder="Escribe aquí..." />
-            ${icon}
-        </div>
-    `;
+    let val = practiceTableAnswers[idx] || '', res = practiceTableResults[idx], borderClass = 'border-slate-300 focus:border-emerald-500 focus:ring-emerald-500', icon = '';
+    if (res === 'ok') { borderClass = 'border-green-500 bg-green-50 text-green-700 font-bold'; icon = '<i data-lucide="check" class="inline w-4 h-4 text-green-600 ml-2 flex-shrink-0"></i>'; }
+    else if (res === 'bad') { borderClass = 'border-red-500 bg-red-50 text-red-700'; icon = '<i data-lucide="x" class="inline w-4 h-4 text-red-600 ml-2 flex-shrink-0"></i>'; }
+    return `<div class="flex items-center w-full"><input type="text" class="input w-full h-9 text-sm ${borderClass}" value="${val}" oninput="updatePracticeTableAnswer(${idx}, this.value)" onblur="checkPracticeTableAnswer(${idx})" onkeyup="if(event.key==='Enter') checkPracticeTableAnswer(${idx})" placeholder="Escribe aquí..." />${icon}</div>`;
 }
 
 function renderPracticeTable() {
     let rowsHTML = '';
-    
     verbs.forEach((v, idx) => {
         let targetCol = practiceTableMode === 'random' ? practiceTableRandomMask[idx] : practiceTableMode;
-        
         let cellPresent = targetCol === 'present' ? createPracticeInput(idx, v.base) : `<div class="font-medium text-slate-800">${v.base}</div>`;
         let cellPast = targetCol === 'past' ? createPracticeInput(idx, v.past) : `<div class="font-medium text-indigo-700">${v.past}</div>`;
         let cellParticiple = targetCol === 'participle' ? createPracticeInput(idx, v.participle) : `<div class="font-medium text-emerald-700">${v.participle}</div>`;
         let cellEs = targetCol === 'es' ? createPracticeInput(idx, v.es) : `<div class="text-slate-600 text-sm">${v.es}</div>`;
-
-        rowsHTML += `
-            <div class="grid grid-cols-4 gap-4 px-4 py-3 border-b border-slate-100 items-center hover:bg-slate-50 transition-colors">
-                ${cellPresent}
-                ${cellPast}
-                ${cellParticiple}
-                ${cellEs}
-            </div>
-        `;
+        rowsHTML += `<div class="grid grid-cols-4 gap-4 px-4 py-3 border-b border-slate-100 items-center hover:bg-slate-50 transition-colors">${cellPresent}${cellPast}${cellParticiple}${cellEs}</div>`;
     });
 
+    return `<div class="animate-fade-in"><div class="card p-6 mb-6 bg-gradient-to-r from-emerald-800 to-emerald-600 text-white shadow-lg"><h2 class="text-2xl font-bold flex items-center mb-2"><i data-lucide="table-2" class="mr-3 h-6 w-6"></i> Practica la Lista Completa</h2><p class="text-emerald-100 text-sm mb-6 max-w-2xl">Selecciona qué columna quieres ocultar y pon a prueba tu memoria llenando los espacios en blanco. Puedes usar la tecla "Enter" para verificar tu respuesta.</p><div class="flex flex-wrap gap-2 items-center"><span class="text-sm font-semibold mr-2">Ocultar columna:</span><button class="btn ${practiceTableMode === 'present' ? 'bg-white text-emerald-800' : 'bg-emerald-900/40 text-emerald-100 hover:bg-emerald-800'} rounded-xl" onclick="setPracticeTableMode('present')">Presente</button><button class="btn ${practiceTableMode === 'past' ? 'bg-white text-emerald-800' : 'bg-emerald-900/40 text-emerald-100 hover:bg-emerald-800'} rounded-xl" onclick="setPracticeTableMode('past')">Pasado</button><button class="btn ${practiceTableMode === 'participle' ? 'bg-white text-emerald-800' : 'bg-emerald-900/40 text-emerald-100 hover:bg-emerald-800'} rounded-xl" onclick="setPracticeTableMode('participle')">Participio</button><button class="btn ${practiceTableMode === 'es' ? 'bg-white text-emerald-800' : 'bg-emerald-900/40 text-emerald-100 hover:bg-emerald-800'} rounded-xl" onclick="setPracticeTableMode('es')">Español</button><div class="w-px h-6 bg-emerald-400 mx-2"></div><button class="btn ${practiceTableMode === 'random' ? 'bg-yellow-400 text-emerald-900 font-bold shadow-md' : 'bg-emerald-900/40 text-emerald-100 hover:bg-emerald-800'} rounded-xl" onclick="setPracticeTableMode('random')"><i data-lucide="dices" class="mr-2 h-4 w-4"></i> Al Azar</button></div></div><div class="card overflow-hidden bg-white shadow-sm border border-slate-200"><div class="overflow-x-auto min-w-[700px]"><div class="grid grid-cols-4 gap-4 px-4 py-3 bg-slate-100 border-b border-slate-200 font-bold text-slate-700 text-sm tracking-wider uppercase"><div>Presente</div><div>Pasado</div><div>Participio</div><div>Español</div></div><div class="divide-y divide-slate-100">${rowsHTML}</div></div></div><div class="mt-6 flex justify-center pb-8"><button class="btn bg-emerald-600 text-white hover:bg-emerald-700 rounded-xl px-8 py-3 shadow-md font-bold text-lg" onclick="checkAllPracticeTable()"><i data-lucide="check-square" class="mr-2 h-5 w-5"></i> Verificar Todas Mis Respuestas</button></div></div>`;
+}
+
+// ==========================================
+// NUEVA SECCIÓN: PREGUNTAS DE REPASO
+// ==========================================
+
+function renderReviewQuestions() {
+    const listClass = "bg-slate-50 p-4 rounded-xl border border-slate-200 shadow-sm";
+    
     return `
-        <div class="animate-fade-in">
-            <!-- Cabecera y Controles -->
-            <div class="card p-6 mb-6 bg-gradient-to-r from-emerald-800 to-emerald-600 text-white shadow-lg">
-                <h2 class="text-2xl font-bold flex items-center mb-2"><i data-lucide="table-2" class="mr-3 h-6 w-6"></i> Practica la Lista Completa</h2>
-                <p class="text-emerald-100 text-sm mb-6 max-w-2xl">
-                    Selecciona qué columna quieres ocultar y pon a prueba tu memoria llenando los espacios en blanco. Puedes usar la tecla "Enter" para verificar tu respuesta.
+        <div class="animate-fade-in space-y-6">
+            
+            <div class="card p-6 bg-gradient-to-r from-rose-800 to-rose-600 text-white shadow-lg">
+                <h2 class="text-2xl font-bold flex items-center mb-2">
+                    <i data-lucide="book-check" class="mr-3 h-6 w-6"></i> Guía y Preguntas de Repaso
+                </h2>
+                <p class="text-rose-100 text-sm">
+                    Aquí encontrarás ejercicios resueltos y todas las explicaciones gramaticales detalladas para dominar el Pasado Simple (was/were, regulares, irregulares, negativas e interrogativas).
                 </p>
+            </div>
+
+            <!-- SECCIÓN DE RESPUESTAS A EJERCICIOS -->
+            <h3 class="text-xl font-bold text-slate-800 flex items-center mt-8 border-b pb-2">
+                <i data-lucide="check-square" class="mr-2 text-rose-500"></i> Respuestas a los ejercicios
+            </h3>
+            <div class="grid md:grid-cols-2 gap-4">
                 
-                <div class="flex flex-wrap gap-2 items-center">
-                    <span class="text-sm font-semibold mr-2">Ocultar columna:</span>
-                    <button class="btn ${practiceTableMode === 'present' ? 'bg-white text-emerald-800' : 'bg-emerald-900/40 text-emerald-100 hover:bg-emerald-800'} rounded-xl" onclick="setPracticeTableMode('present')">Presente</button>
-                    <button class="btn ${practiceTableMode === 'past' ? 'bg-white text-emerald-800' : 'bg-emerald-900/40 text-emerald-100 hover:bg-emerald-800'} rounded-xl" onclick="setPracticeTableMode('past')">Pasado</button>
-                    <button class="btn ${practiceTableMode === 'participle' ? 'bg-white text-emerald-800' : 'bg-emerald-900/40 text-emerald-100 hover:bg-emerald-800'} rounded-xl" onclick="setPracticeTableMode('participle')">Participio</button>
-                    <button class="btn ${practiceTableMode === 'es' ? 'bg-white text-emerald-800' : 'bg-emerald-900/40 text-emerald-100 hover:bg-emerald-800'} rounded-xl" onclick="setPracticeTableMode('es')">Español</button>
-                    
-                    <div class="w-px h-6 bg-emerald-400 mx-2"></div>
-                    
-                    <button class="btn ${practiceTableMode === 'random' ? 'bg-yellow-400 text-emerald-900 font-bold shadow-md' : 'bg-emerald-900/40 text-emerald-100 hover:bg-emerald-800'} rounded-xl" onclick="setPracticeTableMode('random')">
-                        <i data-lucide="dices" class="mr-2 h-4 w-4"></i> Al Azar
-                    </button>
+                <div class="card p-5 border-l-4 border-rose-500">
+                    <h4 class="font-bold text-lg text-rose-900 mb-3">A) Affirmative form: was / were</h4>
+                    <ul class="space-y-3">
+                        <li class="${listClass}">
+                            <div class="font-bold text-slate-800">John <span class="text-rose-600">was</span> at home last week.</div>
+                            <div class="text-sm text-slate-600">John estuvo en casa la semana pasada.</div>
+                        </li>
+                        <li class="${listClass}">
+                            <div class="font-bold text-slate-800">They <span class="text-rose-600">were</span> at the cinema yesterday.</div>
+                            <div class="text-sm text-slate-600">Ellos estuvieron en el cine ayer.</div>
+                        </li>
+                        <li class="${listClass}">
+                            <div class="font-bold text-slate-800">Your parents <span class="text-rose-600">were</span> at the station at nine o’clock.</div>
+                            <div class="text-sm text-slate-600">Tus padres estuvieron en la estación a las nueve.</div>
+                        </li>
+                        <li class="${listClass}">
+                            <div class="font-bold text-slate-800">Mary <span class="text-rose-600">was</span> in the street this morning.</div>
+                            <div class="text-sm text-slate-600">Mary estuvo en la calle esta mañana.</div>
+                        </li>
+                        <li class="${listClass}">
+                            <div class="font-bold text-slate-800">My aunt <span class="text-rose-600">was</span> in hospital yesterday morning.</div>
+                            <div class="text-sm text-slate-600">Mi tía estuvo en el hospital ayer por la mañana.</div>
+                        </li>
+                        <li class="${listClass}">
+                            <div class="font-bold text-slate-800">I <span class="text-rose-600">was</span> at school this morning.</div>
+                            <div class="text-sm text-slate-600">Yo estuve en la escuela esta mañana.</div>
+                        </li>
+                        <li class="${listClass}">
+                            <div class="font-bold text-slate-800">Jill and Kevin <span class="text-rose-600">were</span> at the zoo last Sunday.</div>
+                            <div class="text-sm text-slate-600">Jill y Kevin estuvieron en el zoológico el domingo pasado.</div>
+                        </li>
+                        <li class="${listClass}">
+                            <div class="font-bold text-slate-800">We <span class="text-rose-600">were</span> in a Chinese restaurant last night.</div>
+                            <div class="text-sm text-slate-600">Nosotros estuvimos en un restaurante chino anoche.</div>
+                        </li>
+                    </ul>
+                </div>
+
+                <div class="card p-5 border-l-4 border-rose-500">
+                    <h4 class="font-bold text-lg text-rose-900 mb-3">B) Irregular verbs</h4>
+                    <ul class="space-y-3">
+                        <li class="${listClass}">
+                            <div class="font-bold text-slate-800">I <span class="text-rose-600">ate</span> dinner at six o’clock yesterday.</div>
+                            <div class="text-sm text-slate-600">Yo cené a las seis ayer.</div>
+                        </li>
+                        <li class="${listClass}">
+                            <div class="font-bold text-slate-800">Helen <span class="text-rose-600">drove</span> to work yesterday in the morning.</div>
+                            <div class="text-sm text-slate-600">Helen condujo al trabajo ayer por la mañana.</div>
+                        </li>
+                        <li class="${listClass}">
+                            <div class="font-bold text-slate-800">My neighbor <span class="text-rose-600">bought</span> a new car last week.</div>
+                            <div class="text-sm text-slate-600">Mi vecino compró un carro nuevo la semana pasada.</div>
+                        </li>
+                        <li class="${listClass}">
+                            <div class="font-bold text-slate-800">They <span class="text-rose-600">went</span> to Italy on their last summer holiday.</div>
+                            <div class="text-sm text-slate-600">Ellos fueron a Italia en sus últimas vacaciones de verano.</div>
+                        </li>
+                        <li class="${listClass}">
+                            <div class="font-bold text-slate-800">A: Did they swim at the beach? B: No, they <span class="text-rose-600">didn't</span>.</div>
+                            <div class="text-sm text-slate-600">A: ¿Ellos nadaron en la playa? B: No, no lo hicieron.</div>
+                        </li>
+                        <li class="${listClass}">
+                            <div class="font-bold text-slate-800">My family and I <span class="text-rose-600">saw</span> a comedy movie last night.</div>
+                            <div class="text-sm text-slate-600">Mi familia y yo vimos una película de comedia anoche.</div>
+                        </li>
+                        <li class="${listClass}">
+                            <div class="font-bold text-slate-800">First, we <span class="text-rose-600">did</span> exercise, and then we <span class="text-rose-600">drank</span> some water.</div>
+                            <div class="text-sm text-slate-600">Primero, hicimos ejercicio y luego tomamos agua.</div>
+                        </li>
+                        <li class="${listClass}">
+                            <div class="font-bold text-slate-800">Suddenly, the animal jumped and <span class="text-rose-600">bit</span> my hand.</div>
+                            <div class="text-sm text-slate-600">De repente, el animal saltó y me mordió la mano.</div>
+                        </li>
+                        <li class="${listClass}">
+                            <div class="font-bold text-slate-800">I <span class="text-rose-600">got up</span> early this morning.</div>
+                            <div class="text-sm text-slate-600">Me levanté temprano esta mañana.</div>
+                        </li>
+                        <li class="${listClass}">
+                            <div class="font-bold text-slate-800">The Wright brothers <span class="text-rose-600">flew</span> the first airplane in 1903.</div>
+                            <div class="text-sm text-slate-600">Los hermanos Wright volaron el primer avión en 1903.</div>
+                        </li>
+                        <li class="${listClass}">
+                            <div class="font-bold text-slate-800">I think I <span class="text-rose-600">heard</span> a strange sound outside the door one minute ago.</div>
+                            <div class="text-sm text-slate-600">Creo que escuché un sonido extraño fuera de la puerta hace un minuto.</div>
+                        </li>
+                        <li class="${listClass}">
+                            <div class="font-bold text-slate-800">When I was ten years old, I <span class="text-rose-600">broke</span> my arm. It really <span class="text-rose-600">hurt</span>.</div>
+                            <div class="text-sm text-slate-600">Cuando tenía diez años, me rompí el brazo. Realmente dolió.</div>
+                        </li>
+                        <li class="${listClass}">
+                            <div class="font-bold text-slate-800">The police <span class="text-rose-600">caught</span> all three of the bank robbers last week.</div>
+                            <div class="text-sm text-slate-600">La policía atrapó a los tres ladrones del banco la semana pasada.</div>
+                        </li>
+                        <li class="${listClass}">
+                            <div class="font-bold text-slate-800">You <span class="text-rose-600">read</span> that book when you were a child.</div>
+                            <div class="text-sm text-slate-600">Tú leíste ese libro cuando eras niño.</div>
+                        </li>
+                        <li class="${listClass}">
+                            <div class="font-bold text-slate-800">Unfortunately, I <span class="text-rose-600">forgot</span> to bring my money.</div>
+                            <div class="text-sm text-slate-600">Desafortunadamente, olvidé traer mi dinero.</div>
+                        </li>
+                    </ul>
+                </div>
+
+                <div class="card p-5 border-l-4 border-rose-500">
+                    <h4 class="font-bold text-lg text-rose-900 mb-3">C) Regular verbs</h4>
+                    <ul class="space-y-3">
+                        <li class="${listClass}">
+                            <div class="font-bold text-slate-800">I <span class="text-rose-600">walked</span> home after work yesterday.</div>
+                            <div class="text-sm text-slate-600">Caminé a casa después del trabajo ayer.</div>
+                        </li>
+                        <li class="${listClass}">
+                            <div class="font-bold text-slate-800">The children <span class="text-rose-600">played</span> in the park last Sunday.</div>
+                            <div class="text-sm text-slate-600">Los niños jugaron en el parque el domingo pasado.</div>
+                        </li>
+                        <li class="${listClass}">
+                            <div class="font-bold text-slate-800">The people <span class="text-rose-600">waited</span> two hours for a bus.</div>
+                            <div class="text-sm text-slate-600">Las personas esperaron dos horas por un bus.</div>
+                        </li>
+                        <li class="${listClass}">
+                            <div class="font-bold text-slate-800">I <span class="text-rose-600">liked</span> the party last night. It was fun.</div>
+                            <div class="text-sm text-slate-600">Me gustó la fiesta anoche. Fue divertida.</div>
+                        </li>
+                        <li class="${listClass}">
+                            <div class="font-bold text-slate-800">Everybody <span class="text-rose-600">laughed</span>. It was a funny joke.</div>
+                            <div class="text-sm text-slate-600">Todos se rieron. Fue un chiste divertido.</div>
+                        </li>
+                        <li class="${listClass}">
+                            <div class="font-bold text-slate-800">We <span class="text-rose-600">passed</span> Seville University on the bus. It was very elegant.</div>
+                            <div class="text-sm text-slate-600">Pasamos por la Universidad de Sevilla en el bus. Era muy elegante.</div>
+                        </li>
+                        <li class="${listClass}">
+                            <div class="font-bold text-slate-800">The train <span class="text-rose-600">stopped</span> at the station for ten minutes.</div>
+                            <div class="text-sm text-slate-600">El tren se detuvo en la estación durante diez minutos.</div>
+                        </li>
+                        <li class="${listClass}">
+                            <div class="font-bold text-slate-800">John is a bad student. He <span class="text-rose-600">copied</span> my English exam yesterday.</div>
+                            <div class="text-sm text-slate-600">John es un mal estudiante. Él copió mi examen de inglés ayer.</div>
+                        </li>
+                        <li class="${listClass}">
+                            <div class="font-bold text-slate-800">At the end of the song all the people <span class="text-rose-600">clapped</span>.</div>
+                            <div class="text-sm text-slate-600">Al final de la canción, todas las personas aplaudieron.</div>
+                        </li>
+                        <li class="${listClass}">
+                            <div class="font-bold text-slate-800">We <span class="text-rose-600">carried</span> the suitcases from the airport to the hotel.</div>
+                            <div class="text-sm text-slate-600">Cargamos las maletas desde el aeropuerto hasta el hotel.</div>
+                        </li>
+                    </ul>
+                </div>
+                
+                <div class="card p-5 border-l-4 border-rose-500">
+                    <h4 class="font-bold text-lg text-rose-900 mb-3">D) Negative form</h4>
+                    <ul class="space-y-3">
+                        <li class="${listClass}">
+                            <div class="font-bold text-slate-800">Mum <span class="text-rose-600">was not</span> at home this morning.</div>
+                            <div class="text-sm text-slate-600">Mamá no estuvo en casa esta mañana. (O: <i>wasn't</i>)</div>
+                        </li>
+                        <li class="${listClass}">
+                            <div class="font-bold text-slate-800">Paul and Mary <span class="text-rose-600">were not</span> in the shop.</div>
+                            <div class="text-sm text-slate-600">Paul y Mary no estuvieron en la tienda. (O: <i>weren't</i>)</div>
+                        </li>
+                        <li class="${listClass}">
+                            <div class="font-bold text-slate-800">His friends <span class="text-rose-600">were not</span> very happy yesterday afternoon.</div>
+                            <div class="text-sm text-slate-600">Sus amigos no estuvieron muy felices ayer por la tarde.</div>
+                        </li>
+                        <li class="${listClass}">
+                            <div class="font-bold text-slate-800">I <span class="text-rose-600">was not</span> late for the cinema.</div>
+                            <div class="text-sm text-slate-600">Yo no llegué tarde al cine.</div>
+                        </li>
+                        <li class="${listClass}">
+                            <div class="font-bold text-slate-800">We <span class="text-rose-600">were not</span> at home to watch a film on TV.</div>
+                            <div class="text-sm text-slate-600">Nosotros no estuvimos en casa para ver una película en televisión.</div>
+                        </li>
+                    </ul>
+                </div>
+
+                <div class="card p-5 border-l-4 border-rose-500">
+                    <h4 class="font-bold text-lg text-rose-900 mb-3">E) Interrogative form</h4>
+                    <ul class="space-y-3">
+                        <li class="${listClass}">
+                            <div class="font-bold text-slate-800"><span class="text-rose-600">Did</span> I <span class="text-rose-600">see</span> you last week?</div>
+                            <div class="text-sm text-slate-600">¿Te vi la semana pasada?</div>
+                        </li>
+                        <li class="${listClass}">
+                            <div class="font-bold text-slate-800"><span class="text-rose-600">Did</span> you <span class="text-rose-600">meet</span> your father yesterday?</div>
+                            <div class="text-sm text-slate-600">¿Te encontraste con tu padre ayer?</div>
+                        </li>
+                        <li class="${listClass}">
+                            <div class="font-bold text-slate-800"><span class="text-rose-600">Did</span> we <span class="text-rose-600">go</span> to Spain in June?</div>
+                            <div class="text-sm text-slate-600">¿Fuimos a España en junio?</div>
+                        </li>
+                        <li class="${listClass}">
+                            <div class="font-bold text-slate-800"><span class="text-rose-600">Did</span> it <span class="text-rose-600">snow</span> last winter?</div>
+                            <div class="text-sm text-slate-600">¿Nevó el invierno pasado?</div>
+                        </li>
+                        <li class="${listClass}">
+                            <div class="font-bold text-slate-800"><span class="text-rose-600">Did</span> they <span class="text-rose-600">stay</span> last night?</div>
+                            <div class="text-sm text-slate-600">¿Ellos se quedaron anoche?</div>
+                        </li>
+                        <li class="${listClass}">
+                            <div class="font-bold text-slate-800"><span class="text-rose-600">Did</span> Julie <span class="text-rose-600">watch</span> a film on Saturday?</div>
+                            <div class="text-sm text-slate-600">¿Julie vio una película el sábado?</div>
+                        </li>
+                        <li class="${listClass}">
+                            <div class="font-bold text-slate-800"><span class="text-rose-600">Did</span> Lucy <span class="text-rose-600">pass</span> the exam?</div>
+                            <div class="text-sm text-slate-600">¿Lucy aprobó el examen?</div>
+                        </li>
+                        <li class="${listClass}">
+                            <div class="font-bold text-slate-800"><span class="text-rose-600">Did</span> you <span class="text-rose-600">have</span> fun at the party?</div>
+                            <div class="text-sm text-slate-600">¿Te divertiste en la fiesta?</div>
+                        </li>
+                        <li class="${listClass}">
+                            <div class="font-bold text-slate-800"><span class="text-rose-600">Did</span> I <span class="text-rose-600">lock</span> the door?</div>
+                            <div class="text-sm text-slate-600">¿Cerré la puerta con seguro?</div>
+                        </li>
+                        <li class="${listClass}">
+                            <div class="font-bold text-slate-800"><span class="text-rose-600">Did</span> Sally and Victoria <span class="text-rose-600">go</span> to a café at lunchtime?</div>
+                            <div class="text-sm text-slate-600">¿Sally y Victoria fueron a un café a la hora del almuerzo?</div>
+                        </li>
+                        <li class="${listClass}">
+                            <div class="font-bold text-slate-800"><span class="text-rose-600">Did</span> we <span class="text-rose-600">meet</span> in 1997?</div>
+                            <div class="text-sm text-slate-600">¿Nos conocimos en 1997?</div>
+                        </li>
+                        <li class="${listClass}">
+                            <div class="font-bold text-slate-800"><span class="text-rose-600">Did</span> the film <span class="text-rose-600">start</span> on time?</div>
+                            <div class="text-sm text-slate-600">¿La película empezó a tiempo?</div>
+                        </li>
+                        <li class="${listClass}">
+                            <div class="font-bold text-slate-800"><span class="text-rose-600">Did</span> they <span class="text-rose-600">cook</span> dinner?</div>
+                            <div class="text-sm text-slate-600">¿Ellos cocinaron la cena?</div>
+                        </li>
+                        <li class="${listClass}">
+                            <div class="font-bold text-slate-800"><span class="text-rose-600">Did</span> it <span class="text-rose-600">rain</span> a lot on your holiday?</div>
+                            <div class="text-sm text-slate-600">¿Llovió mucho en tus vacaciones?</div>
+                        </li>
+                        <li class="${listClass}">
+                            <div class="font-bold text-slate-800"><span class="text-rose-600">Did</span> you <span class="text-rose-600">feel</span> okay on the first day of your new job?</div>
+                            <div class="text-sm text-slate-600">¿Te sentiste bien en el primer día de tu nuevo trabajo?</div>
+                        </li>
+                    </ul>
+                </div>
+                
+                <div class="card p-5 border-l-4 border-rose-500">
+                    <h4 class="font-bold text-lg text-rose-900 mb-3">F) Paragraph Example</h4>
+                    <p class="text-sm text-slate-600 mb-3">Un párrafo de 5 líneas sobre una experiencia especial:</p>
+                    <div class="bg-indigo-50 p-4 rounded-xl border border-indigo-100 font-serif text-lg leading-relaxed shadow-sm">
+                        Last year, I went to Bogotá with my family. <br/>
+                        We visited a beautiful museum and walked around the city. <br/>
+                        I took many pictures and ate delicious food. <br/>
+                        At night, we returned to the hotel and watched a movie. <br/>
+                        It was a very special experience because I felt happy with my family.
+                    </div>
+                    <div class="mt-3 text-sm text-slate-500">
+                        <b>Traducción:</b> El año pasado fui a Bogotá con mi familia. Visitamos un museo bonito y caminamos por la ciudad. Tomé muchas fotos y comí comida deliciosa. En la noche, regresamos al hotel y vimos una película. Fue una experiencia muy especial porque me sentí feliz con mi familia.
+                    </div>
                 </div>
             </div>
 
-            <!-- Tabla -->
-            <div class="card overflow-hidden bg-white shadow-sm border border-slate-200">
-                <div class="overflow-x-auto min-w-[700px]">
-                    <!-- Encabezados de la Tabla -->
-                    <div class="grid grid-cols-4 gap-4 px-4 py-3 bg-slate-100 border-b border-slate-200 font-bold text-slate-700 text-sm tracking-wider uppercase">
-                        <div>Presente</div>
-                        <div>Pasado</div>
-                        <div>Participio</div>
-                        <div>Español</div>
+            <!-- EXPLICACIONES Y REGLAS (EXPLANATIONS) -->
+            <h3 class="text-xl font-bold text-slate-800 flex items-center mt-10 border-b pb-2">
+                <i data-lucide="graduation-cap" class="mr-2 text-rose-500"></i> Explicaciones del Pasado Simple
+            </h3>
+            
+            <div class="grid md:grid-cols-2 gap-4">
+                
+                <div class="card p-5 bg-white">
+                    <h4 class="font-bold text-lg text-indigo-900 mb-2">1. Affirmative form</h4>
+                    <p class="text-sm text-slate-700 mb-2"><b>Estructura:</b> Sujeto + verbo en pasado + complemento.</p>
+                    <div class="bg-slate-100 rounded-lg p-3 text-sm mb-3">
+                        <i>I <b>watched</b> a movie yesterday.</i> (Vi una película ayer.)<br/>
+                        <i>She <b>cooked</b> dinner last night.</i> (Ella cocinó la cena anoche.)
                     </div>
                     
-                    <!-- Filas generadas dinámicamente -->
-                    <div class="divide-y divide-slate-100">
-                        ${rowsHTML}
+                    <h5 class="font-bold text-sm mt-4 text-slate-800">Verbos regulares (-ed)</h5>
+                    <table class="w-full text-sm text-left mb-4 border-collapse">
+                        <tr class="bg-slate-200"><th class="p-1 border">Present</th><th class="p-1 border">Past</th><th class="p-1 border">Español</th></tr>
+                        <tr><td class="p-1 border">watch</td><td class="p-1 border font-bold text-rose-600">watched</td><td class="p-1 border">mirar / miró</td></tr>
+                        <tr><td class="p-1 border">cook</td><td class="p-1 border font-bold text-rose-600">cooked</td><td class="p-1 border">cocinar / cocinó</td></tr>
+                        <tr><td class="p-1 border">play</td><td class="p-1 border font-bold text-rose-600">played</td><td class="p-1 border">jugar / jugó</td></tr>
+                        <tr><td class="p-1 border">wait</td><td class="p-1 border font-bold text-rose-600">waited</td><td class="p-1 border">esperar / esperó</td></tr>
+                    </table>
+                    
+                    <h5 class="font-bold text-sm text-slate-800">Reglas de escritura (Spelling rules)</h5>
+                    <ul class="text-sm list-disc pl-5 mb-4 text-slate-700">
+                        <li>Normal + ed: <b>walk → walked</b></li>
+                        <li>Termina en e + d: <b>like → liked</b></li>
+                        <li>Consonante + y → ied: <b>copy → copied</b></li>
+                        <li>Doblar consonante final: <b>stop → stopped, clap → clapped</b></li>
+                    </ul>
+                    
+                    <h5 class="font-bold text-sm text-slate-800">Verbos irregulares</h5>
+                    <p class="text-sm text-slate-600 mb-2">Debes aprender su forma especial en pasado. No usan -ed.</p>
+                    <table class="w-full text-sm text-left border-collapse">
+                        <tr class="bg-slate-200"><th class="p-1 border">Present</th><th class="p-1 border">Past</th><th class="p-1 border">Español</th></tr>
+                        <tr><td class="p-1 border">go</td><td class="p-1 border font-bold text-rose-600">went</td><td class="p-1 border">ir / fue</td></tr>
+                        <tr><td class="p-1 border">see</td><td class="p-1 border font-bold text-rose-600">saw</td><td class="p-1 border">ver / vio</td></tr>
+                        <tr><td class="p-1 border">sing</td><td class="p-1 border font-bold text-rose-600">sang</td><td class="p-1 border">cantar / cantó</td></tr>
+                        <tr><td class="p-1 border">eat</td><td class="p-1 border font-bold text-rose-600">ate</td><td class="p-1 border">comer / comió</td></tr>
+                        <tr><td class="p-1 border">read</td><td class="p-1 border font-bold text-rose-600">read</td><td class="p-1 border">leer / leyó (*Se pronuncia "red")</td></tr>
+                    </table>
+                </div>
+
+                <div class="space-y-4">
+                    <div class="card p-5 bg-white">
+                        <h4 class="font-bold text-lg text-indigo-900 mb-2">2. Negative form</h4>
+                        <p class="text-sm text-slate-700 mb-2"><b>Estructura:</b> Sujeto + <b>did not (didn't)</b> + verbo base + complemento.</p>
+                        <div class="bg-rose-50 rounded-lg p-3 text-sm border border-rose-100">
+                            <b>Importante:</b> Después de did not / didn't, el verbo va en forma base. <br/><br/>
+                            <i data-lucide="check" class="inline w-4 h-4 text-green-600"></i> Correcto: <i>She <b>didn't go</b>.</i><br/>
+                            <i data-lucide="x" class="inline w-4 h-4 text-red-600"></i> Incorrecto: <i>She didn't went.</i><br/><br/>
+                            <i data-lucide="check" class="inline w-4 h-4 text-green-600"></i> Correcto: <i>Manolo <b>did not kill</b> the bull.</i><br/>
+                            <i data-lucide="x" class="inline w-4 h-4 text-red-600"></i> Incorrecto: <i>Manolo did not killed the bull.</i>
+                        </div>
+                    </div>
+
+                    <div class="card p-5 bg-white">
+                        <h4 class="font-bold text-lg text-indigo-900 mb-2">3. Interrogative form</h4>
+                        <p class="text-sm text-slate-700 mb-2"><b>Estructura:</b> <b>Did</b> + sujeto + verbo base + complemento?</p>
+                        <div class="bg-rose-50 rounded-lg p-3 text-sm border border-rose-100">
+                            <b>Muy importante:</b> Porque "did" ya marca el pasado, el verbo vuelve a su forma base.<br/><br/>
+                            <i data-lucide="check" class="inline w-4 h-4 text-green-600"></i> Correcto: <i><b>Did</b> you <b>see</b> him?</i><br/>
+                            <i data-lucide="x" class="inline w-4 h-4 text-red-600"></i> Incorrecto: <i>Did you saw him?</i><br/><br/>
+                            <b>Respuestas cortas:</b><br/>
+                            Yes, I did. / No, I didn’t.<br/>
+                            Yes, she did. / No, she didn’t.
+                        </div>
+                    </div>
+                    
+                    <div class="card p-5 bg-white">
+                        <h4 class="font-bold text-lg text-indigo-900 mb-2">4. Simple past con "To Be" (was/were)</h4>
+                        <p class="text-sm text-slate-700 mb-2">Con el verbo <i>to be</i>, <b>NO</b> uses did ni didn't. Solo agrega <i>not</i>.</p>
+                        <ul class="text-sm list-disc pl-5 text-slate-700 space-y-1">
+                            <li><b>Usa was:</b> I, he, she, it. <i>(I was tired / I was not tired / Was I tired?)</i></li>
+                            <li><b>Usa were:</b> you, we, they. <i>(They were happy / They were not happy / Were they happy?)</i></li>
+                        </ul>
                     </div>
                 </div>
             </div>
-            
-            <div class="mt-6 flex justify-center pb-8">
-                <button class="btn bg-emerald-600 text-white hover:bg-emerald-700 rounded-xl px-8 py-3 shadow-md font-bold text-lg" onclick="checkAllPracticeTable()">
-                    <i data-lucide="check-square" class="mr-2 h-5 w-5"></i> Verificar Todas Mis Respuestas
-                </button>
+
+            <!-- TEXTOS CORTOS DE EJEMPLO -->
+            <h3 class="text-xl font-bold text-slate-800 flex items-center mt-10 border-b pb-2">
+                <i data-lucide="file-text" class="mr-2 text-rose-500"></i> Textos cortos de ejemplo
+            </h3>
+            <div class="grid md:grid-cols-2 gap-4">
+                <div class="card p-4 bg-slate-50 border-l-4 border-emerald-500">
+                    <h5 class="font-bold text-emerald-800 mb-2">Text 1: Affirmative</h5>
+                    <p class="italic text-sm text-slate-800">Yesterday, I visited my grandmother. I helped her in the kitchen and cleaned the table. Then, we watched a movie together. It was a beautiful afternoon.</p>
+                    <p class="text-xs text-slate-500 mt-2">Ayer visité a mi abuela. La ayudé en la cocina y limpié la mesa. Luego vimos una película juntos. Fue una tarde bonita.</p>
+                </div>
+                <div class="card p-4 bg-slate-50 border-l-4 border-red-500">
+                    <h5 class="font-bold text-red-800 mb-2">Text 2: Negative</h5>
+                    <p class="italic text-sm text-slate-800">Yesterday, I didn’t go to the park. I didn’t play soccer because it rained a lot. I stayed at home and studied English.</p>
+                    <p class="text-xs text-slate-500 mt-2">Ayer no fui al parque. No jugué fútbol porque llovió mucho. Me quedé en casa y estudié inglés.</p>
+                </div>
+                <div class="card p-4 bg-slate-50 border-l-4 border-amber-500">
+                    <h5 class="font-bold text-amber-800 mb-2">Text 3: Questions</h5>
+                    <p class="italic text-sm text-slate-800">Did you watch a movie last night? Did you like it? Did you eat popcorn? I watched a movie, but I didn’t eat popcorn.</p>
+                    <p class="text-xs text-slate-500 mt-2">¿Viste una película anoche? ¿Te gustó? ¿Comiste palomitas? Yo vi una película, pero no comí palomitas.</p>
+                </div>
+                <div class="card p-4 bg-slate-50 border-l-4 border-blue-500">
+                    <h5 class="font-bold text-blue-800 mb-2">Text 4: Mixed forms</h5>
+                    <p class="italic text-sm text-slate-800">Last Saturday, I went to the cinema with my friends. We watched a comedy movie. I liked the movie, but I didn’t like the ending. Did my friends like it? Yes, they did.</p>
+                    <p class="text-xs text-slate-500 mt-2">El sábado pasado fui al cine con mis amigos. Vimos una película de comedia. Me gustó la película, pero no me gustó el final. ¿A mis amigos les gustó? Sí.</p>
+                </div>
             </div>
+
         </div>
     `;
 }
@@ -1457,6 +1536,7 @@ function renderApp() {
     else if (activeTab === 'games') activeContent = renderGames();
     else if (activeTab === 'pro-games') activeContent = renderProGames();
     else if (activeTab === 'practice-table') activeContent = renderPracticeTable();
+    else if (activeTab === 'review') activeContent = renderReviewQuestions(); // SE RENDERIZA LA NUEVA PESTAÑA
 
     appContainer.innerHTML = `
         <div class="min-h-screen bg-slate-50 p-4 text-slate-900 md:p-8 pb-20">
